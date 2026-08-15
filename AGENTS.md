@@ -117,10 +117,10 @@ arenamer/
 ├── requirements-dev.txt       # + pytest
 ├── backend/
 │   ├── main.py                # FastAPI app: static mount, /api/health, pywebview bootstrap
-│   ├── api/                   # API route modules (Milestone 3: list / preview / rename)
+│   ├── api/                   # API routes + Pydantic schemas (list/dirs/preview/check/rename)
 │   ├── engine/                # PURE rename engine (no web deps) — the correctness core
 │   │   ├── models.py          # RenameFile + Config dataclasses (+ JSON (de)serialization)
-│   │   ├── pipeline.py        # compute() + preview() + check_duplicates() + build_files()
+│   │   ├── pipeline.py        # compute/preview/find_duplicates/check_duplicates/perform_rename/build_files
 │   │   ├── add.py remove.py replace.py number.py ifthen.py date.py
 │   └── static/                # built SPA (gitignored; `npm run build` output)
 ├── frontend/                  # Svelte SPA (Vite)
@@ -131,7 +131,9 @@ arenamer/
 │       ├── lib/state/         # central store: files, selection, config (Milestone 4)
 │       ├── components/        # FileList, DirectoryTree, RenameButton, … (Milestone 5)
 │       └── components/modifiers/  # one component per modifier (Milestone 6)
-└── tests/test_engine.py       # engine test suite (59 tests, all green)
+└── tests/
+    ├── test_engine.py         # engine suite (59 tests) — modifiers, pipeline order, edge cases
+    └── test_api.py            # API suite (10 tests) — list/dirs/preview/check/rename over HTTP
 ```
 
 ### Engine public API (`backend/engine/__init__.py`)
@@ -139,10 +141,22 @@ arenamer/
 - `compute(files, config)` — run the full pipeline (mutates each file's `new_base`).
 - `build_files(path, names)` — build `RenameFile` objects (row = list position).
 - `preview(files, config)` — per-file new-name info keyed by original name.
-- `check_duplicates(files, config)` — count results that would clobber an existing file.
+- `find_duplicates(files, config)` / `check_duplicates(...)` — names/count that would clobber an existing file.
+- `perform_rename(files, config)` — rename on disk; returns `{renamed, errors}`.
 
 The engine is **pure stdlib** (dataclasses, `re`, `os`, `datetime`) — no web deps — so it
 is trivially unit-testable and reusable.
+
+### API surface (`backend/api/routes.py`, all under `/api`)
+- `GET  /list?path=` — files in a directory (name, size, mtime), sorted; subdirs excluded.
+- `GET  /dirs?path=` — immediate subdirectories (for lazy tree navigation).
+- `POST /preview`  `{path, files[], config}` → per-file new-name preview.
+- `POST /check`    `{path, files[], config}` → duplicate names that would clobber existing.
+- `POST /rename`   `{path, files[], config}` → renames on disk; **409** if any would clobber.
+
+`config` is a plain JSON object matching `Config.to_dict()` (see §3); the backend converts
+it via `Config.from_dict`, so partial configs from the UI are fine. The rename workflow is:
+UI calls `/check` (blocking warning if duplicates) → its own confirm dialog → `/rename`.
 
 ---
 
@@ -178,8 +192,8 @@ and either open http://127.0.0.1:8000 (after `npm run build`) or use the Vite de
 |---|-------|--------|
 | 1 | Scaffold: FastAPI + pywebview backend, Vite+Svelte frontend, static mount, one-command run | ✅ done (scaffold) |
 | 2 | Engine: port all 6 modifiers + pipeline order, pure Python, pytest suite green (59 tests) | ✅ done |
-| 3 | API: `GET /api/list`, `POST /api/preview`, `POST /api/rename` (duplicate check + confirm) | ⬜ next |
-| 4 | Frontend core: central store (files, selection, config), live preview column | ⬜ |
+| 3 | API: `/api/list`, `/api/dirs`, `/api/preview`, `/api/check`, `/api/rename` (duplicate check + 409 safety net) | ✅ done |
+| 4 | Frontend core: central store (files, selection, config), live preview column | ⬜ next |
 | 5 | UI: file list (multi-select), directory tree, select-all/clear, path bar, Rename button + dialogs | ⬜ |
 | 6 | Modifier panels: all six with live preview + active indicators (✓/✗) | ⬜ |
 | 7 | i18n: German + English, runtime switcher, system-locale auto-detect | ⬜ |

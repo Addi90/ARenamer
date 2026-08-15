@@ -74,19 +74,53 @@ def preview(files: list[RenameFile], config: Config) -> dict[str, dict]:
     return result
 
 
-def check_duplicates(files: list[RenameFile], config: Config) -> int:
-    """Count files whose resulting name already exists on disk.
+def find_duplicates(files: list[RenameFile], config: Config) -> list[str]:
+    """Return the original names of files whose resulting name already exists on disk.
 
-    Mirrors ``Renamer::checkForDuplicates``: re-run the pipeline, then count any file
-    whose new name (path/new_base+ext) exists on disk, skipping files whose base name
-    is unchanged. Used to block a rename that would clobber an existing file.
+    Mirrors ``Renamer::checkForDuplicates``: re-run the pipeline, then collect any file
+    whose new name (path/new_base+ext) exists on disk, skipping files whose base name is
+    unchanged. The API uses this to (a) show a blocking warning and (b) highlight the
+    offending rows before a rename.
     """
     compute(files, config)
-    count = 0
+    dups: list[str] = []
     for f in files:
         if not f.changed:
             continue
         target = os.path.join(f.path, f.new_full_name) if f.path else f.new_full_name
         if os.path.exists(target):
-            count += 1
-    return count
+            dups.append(f.name)
+    return dups
+
+
+def check_duplicates(files: list[RenameFile], config: Config) -> int:
+    """Count of files that would clobber an existing file (see ``find_duplicates``)."""
+    return len(find_duplicates(files, config))
+
+
+def perform_rename(files: list[RenameFile], config: Config) -> dict:
+    """Run the pipeline and rename files on disk. Returns a summary.
+
+    Mirrors ``Renamer::save`` + ``RenameFile::renameFile``: only files whose new name
+    differs from the current one and that still exist are renamed. Per-file OS errors are
+    collected rather than raised, so one bad file doesn't abort the rest.
+
+    Returns ``{"renamed": int, "errors": [{"name", "error"}, ...]}``.
+    """
+    compute(files, config)
+    renamed = 0
+    errors: list[dict] = []
+    for f in files:
+        if not f.changed:
+            continue
+        src = os.path.join(f.path, f.name) if f.path else f.name
+        dst = os.path.join(f.path, f.new_full_name) if f.path else f.new_full_name
+        try:
+            if not os.path.exists(src):
+                continue  # source gone; skip silently (matches the original)
+            os.rename(src, dst)
+            f.set_name(f.new_full_name)  # keep in-memory state consistent
+            renamed += 1
+        except OSError as e:
+            errors.append({"name": f.name, "error": str(e)})
+    return {"renamed": renamed, "errors": errors}

@@ -1,8 +1,7 @@
 """FastAPI application for the A-Renamer Tool Python port.
 
-Milestone 1 scaffold: creates the app, serves the built Svelte frontend from
-``backend/static`` (when present), and exposes a health endpoint. The real rename
-API endpoints land in Milestone 3; the engine they call is already complete.
+Creates the app, mounts the rename API (``/api/*``, see :mod:`backend.api`), and
+serves the built Svelte frontend from ``backend/static`` (when present).
 
 Run for development (serves API + static on http://127.0.0.1:8000):
     uvicorn backend.main:app --reload
@@ -21,6 +20,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from .api import api_router
+
 # Directory that holds the built Svelte assets (frontend `npm run build` output).
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BACKEND_DIR, "static")
@@ -37,11 +38,14 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    app.include_router(api_router)
+
     @app.get("/api/health")
     def health() -> dict:
         return {"status": "ok", "app": "A-Renamer Tool"}
 
     # Serve the built SPA if it exists (so `python run.py` works after a build).
+    # Mounted last so the /api routes above take precedence.
     if os.path.isdir(STATIC_DIR):
         app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 

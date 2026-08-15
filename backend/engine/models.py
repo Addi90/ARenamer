@@ -60,6 +60,16 @@ class RenameFile:
     def changed(self) -> bool:
         return self.new_base != self.base
 
+    def set_name(self, newname: str) -> None:
+        """Adopt a new on-disk name and re-derive base/ext/new_base from it.
+
+        Called after a successful rename so the in-memory object matches reality
+        (a subsequent preview of an already-renamed file correctly shows no change).
+        """
+        self.name = newname
+        self.base, self.ext = split_name(newname)
+        self.new_base = self.base
+
 
 # --------------------------------------------------------------------------- #
 # Modifier configuration objects. Each has an `enabled` flag + its parameters,

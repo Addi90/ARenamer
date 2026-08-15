@@ -22,7 +22,14 @@ from .models import (
     ReplaceConfig,
     split_name,
 )
-from .pipeline import build_files, check_duplicates, compute, preview
+from .pipeline import (
+    build_files,
+    check_duplicates,
+    compute,
+    find_duplicates,
+    perform_rename,
+    preview,
+)
 
 __all__ = [
     "Config",
@@ -37,5 +44,7 @@ __all__ = [
     "compute",
     "build_files",
     "preview",
+    "find_duplicates",
     "check_duplicates",
+    "perform_rename",
 ]
