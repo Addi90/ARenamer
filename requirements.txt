@@ -1,0 +1,7 @@
+# Runtime dependencies for the A-Renamer Tool Python port.
+# The rename engine (backend/engine) is pure stdlib and needs none of these;
+# they are for the web backend + desktop shell (later milestones).
+
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pywebview>=5.0
