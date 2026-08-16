@@ -25,7 +25,7 @@
         <input type="text" bind:value={state.config.add.insert} placeholder="e.g. -copy" />
       </label>
       <label class="pos">Pos.
-        <input type="number" min="0" bind:value={state.config.add.pos} />
+        <input type="number" min="0" bind:value={state.config.add.insert_pos} />
       </label>
     </div>
   </div>

@@ -1,8 +1,11 @@
 <script>
   import { onMount } from "svelte";
   import FileList from "./components/FileList.svelte";
+  import DirectoryTree from "./components/DirectoryTree.svelte";
+  import RenameButton from "./components/RenameButton.svelte";
+  import Dialog from "./components/Dialog.svelte";
   import AddModifier from "./components/modifiers/AddModifier.svelte";
-  import { state as appState, loadDir, openHome, refreshPreview } from "./lib/state/store.svelte.js";
+  import { state as appState, loadDir, openHome, goUp, refreshPreview } from "./lib/state/store.svelte.js";
 
   // Draft path in the input; committed only on Open/Enter (so typing doesn't
   // re-trigger preview with a half-typed path).
@@ -12,6 +15,8 @@
     const p = pathInput.trim();
     if (p) loadDir(p);
   }
+
+  const canGoUp = $derived(!!appState.currentPath && appState.currentPath !== "/");
 
   // Keep the input in sync when a directory is loaded.
   $effect(() => {
@@ -45,24 +50,36 @@
 
   <div class="pathbar">
     <button onclick={openHome} title="Open the home directory">Home</button>
+    <button disabled={!canGoUp} onclick={goUp} title="Open the parent directory">Up</button>
     <input type="text" class="path" bind:value={pathInput} placeholder="/path/to/directory" onkeydown={(e) => e.key === "Enter" && commitPath()} />
     <button class="primary" onclick={commitPath}>Open</button>
   </div>
 
-  {#if state.error}
-    <div class="error">{state.error}</div>
+  {#if appState.error}
+    <div class="error">{appState.error}</div>
   {/if}
 
-  <FileList />
+  <div class="main">
+    <aside class="tree-pane">
+      <DirectoryTree />
+    </aside>
+    <div class="content">
+      <FileList>
+        <RenameButton slot="actions" />
+      </FileList>
 
-  <section class="modifiers">
-    <AddModifier />
-  </section>
+      <section class="modifiers">
+        <AddModifier />
+      </section>
+    </div>
+  </div>
+
+  <Dialog />
 </main>
 
 <style>
   .shell {
-    max-width: 900px;
+    max-width: 1100px;
     margin: 24px auto;
     padding: 0 20px;
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -74,11 +91,17 @@
   .pathbar { display: flex; gap: 8px; margin: 16px 0; }
   .pathbar input.path { flex: 1; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
   button { padding: 8px 14px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
-  button:hover { background: #f3f4f6; }
+  button:hover:not(:disabled) { background: #f3f4f6; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
   button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
-  button.primary:hover { background: #1d4ed8; }
+  button.primary:hover:not(:disabled) { background: #1d4ed8; }
 
   .error { margin-bottom: 12px; padding: 8px 12px; border-radius: 6px; background: #fdecec; color: #7f1d1d; font-size: 0.85rem; }
 
-  .modifiers { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .main { display: flex; gap: 16px; align-items: flex-start; }
+  .tree-pane { flex: 0 0 30%; max-width: 320px; }
+  .tree-pane :global(.tree) { max-height: calc(100vh - 260px); min-height: 240px; }
+  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+
+  .modifiers { display: flex; flex-direction: column; gap: 12px; }
 </style>

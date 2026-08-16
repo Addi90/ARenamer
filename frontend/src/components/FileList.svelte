@@ -1,6 +1,9 @@
 <script>
   import { state, toggleSelect, selectAll, clearSelection } from "../lib/state/store.svelte.js";
 
+  // Optional actions slot (Svelte 5 function-prop syntax) — e.g. the Rename button.
+  let { actions } = $props();
+
   // Header checkbox reflects the selection; clicking it selects all / clears.
   const allSelected = $derived(state.files.length > 0 && state.selection.length === state.files.length);
 
@@ -13,6 +16,13 @@
     e.stopPropagation();
   }
 </script>
+
+<div class="toolbar">
+  <button onclick={selectAll}>Select all</button>
+  <button onclick={clearSelection} disabled={state.selection.length === 0}>Clear</button>
+  <span class="spacer"></span>
+  {@render actions?.()}
+</div>
 
 <table class="files">
   <thead>
@@ -28,13 +38,14 @@
     {#each state.files as file (file.name)}
       {@const selected = state.selection.includes(file.name)}
       {@const prev = state.previews[file.name]}
-      <tr class:selected={selected} onclick={() => toggleSelect(file.name)}>
+      {@const duplicate = state.duplicateNames.includes(file.name)}
+      <tr class:selected={selected} class:duplicate={duplicate} onclick={() => toggleSelect(file.name)}>
         <td class="col-check">
           <input type="checkbox" checked={selected} onclick={onCheckboxClick} onchange={() => toggleSelect(file.name)} />
         </td>
         <td class="col-name" title={file.name}>{file.name}</td>
         <td class="col-new" class:changed={prev?.changed} class:muted={!selected}>
-          {prev ? prev.full_new_name : file.name}
+          {prev ? prev.full_new_name : file.name}{duplicate ? " ⚠" : ""}
         </td>
       </tr>
     {/each}
@@ -47,6 +58,12 @@
 </table>
 
 <style>
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .toolbar button { padding: 6px 12px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+  .toolbar button:hover:not(:disabled) { background: #f3f4f6; }
+  .toolbar button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .spacer { flex: 1; }
+
   .files {
     width: 100%;
     border-collapse: collapse;
@@ -75,6 +92,8 @@
   tbody tr:hover { background: #f5f8ff; }
   tr.selected { background: #eef4ff; }
   tr.selected:hover { background: #e3edff; }
+  tr.duplicate td { background: #fdecec; color: #7f1d1d; }
+  tr.duplicate:hover td { background: #fadbd8; }
 
   .col-check { width: 28px; text-align: center; }
   .col-name { font-family: ui-monospace, "SF Mono", Menlo, monospace; }

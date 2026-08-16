@@ -18,24 +18,28 @@
 // file uses the `.svelte.js` extension so the Svelte plugin compiles it.
 import * as api from "../api.js";
 
-/** A fresh, all-disabled modifier config matching the backend's `Config.to_dict()`. */
+/**
+ * A fresh, all-disabled modifier config. Field names and values MUST mirror the
+ * backend's `Config.to_dict()` exactly — `Config.from_dict` silently ignores unknown
+ * keys, so a mismatched field name is a silent no-op (e.g. `pos` vs `insert_pos`).
+ */
 export function defaultConfig() {
   return {
-    add: { enabled: false, prefix: "", suffix: "", insert: "", pos: 0 },
+    add: { enabled: false, prefix: "", suffix: "", insert: "", insert_pos: 0 },
     ifthen: {
       enabled: false,
-      mode: "contains", // "contains" | "not_contains"
+      contains_not: false, // condition mode: CONTAINS (false) / CONTAINS NOT (true)
       expression: "",
       regex: false,
-      case_sensitive: true,
+      case_sensitive: false,
       action: "prefix", // "prefix" | "insert" | "suffix"
       string: "",
-      pos: 0,
+      insert_pos: 0,
     },
-    replace: { enabled: false, search: "", replacement: "", regex: false, case_sensitive: true },
-    remove: { enabled: false, first_n: 0, last_n: 0, range_enabled: false, start: 1, end: 1, until_end: false },
-    counting: { enabled: false, position: "suffix", start_num: 1, padding: 0, insert_pos: 0 },
-    date: { enabled: false, format: "YYYY-MM-DD", separator: "-", source: "today", custom_date: "", position: "suffix", pos: 0 },
+    replace: { enabled: false, search: "", replace: "", regex: false, case_sensitive: false },
+    remove: { enabled: false, front: 0, back: 0, range_enabled: false, range_start: 1, range_end: 1, until_end: false },
+    counting: { enabled: false, position: "prefix", start: 1, padding: 0, insert_pos: 0 },
+    date: { enabled: false, format: "ymd", separator: "-", source: "today", custom_date: "", position: "suffix", insert_pos: 0 },
   };
 }
 
@@ -45,6 +49,9 @@ export const state = $state({
   selection: [], // selected filenames (array; numbering re-derived in list order)
   config: defaultConfig(),
   previews: {}, // { [name]: { new_base, ext, full_new_name, changed } }
+  duplicateNames: [], // original names that would clobber an existing file (row highlight)
+  renaming: false,
+  dialog: { open: false, title: "", message: "", variant: "info", buttons: [], dismissId: null },
   busy: false,
   error: "",
 });
@@ -62,6 +69,7 @@ export async function loadDir(path) {
     state.files = res.files;
     state.selection = [];
     state.previews = {};
+    state.duplicateNames = [];
   } catch (e) {
     state.error = e.message || String(e);
   } finally {
@@ -77,6 +85,13 @@ export async function openHome() {
   } catch (e) {
     state.error = e.message || String(e);
   }
+}
+
+/** Navigate to the parent of the current directory (no-op at the filesystem root). */
+export function goUp() {
+  const p = state.currentPath.replace(/\/+$/, "");
+  if (!p || p === "/") return;
+  loadDir(p.split("/").slice(0, -1).join("/") || "/");
 }
 
 // --- selection ------------------------------------------------------------- #
@@ -97,21 +112,55 @@ export function clearSelection() {
 
 // --- preview --------------------------------------------------------------- #
 
+/** The selected filenames in on-screen list order (the payload for check/rename/preview). */
+function selectedInOrder() {
+  return state.files.map((f) => f.name).filter((n) => state.selection.includes(n));
+}
+
 /** Recompute previews for the current selection (in list order) via `/api/preview`. */
 export async function refreshPreview() {
   if (!state.currentPath || state.selection.length === 0) {
     state.previews = {};
     return;
   }
-  const selectedInOrder = state.files.map((f) => f.name).filter((n) => state.selection.includes(n));
-  if (selectedInOrder.length === 0) {
+  const files = selectedInOrder();
+  if (files.length === 0) {
     state.previews = {};
     return;
   }
   try {
-    const res = await api.preview({ path: state.currentPath, files: selectedInOrder, config: state.config });
+    const res = await api.preview({ path: state.currentPath, files, config: state.config });
     state.previews = res.previews;
   } catch (e) {
     state.error = e.message || String(e);
+  }
+}
+
+// --- rename workflow -------------------------------------------------------- #
+
+/**
+ * Show a modal dialog (rendered by `components/Dialog.svelte`); resolves with the
+ * clicked button id, or `dismissId` when dismissed via Esc / backdrop click.
+ */
+export function showDialog({ title, message, variant = "info", buttons, dismissId = null }) {
+  return new Promise((resolve) => {
+    state.dialog = { open: true, title, message, variant, buttons, dismissId, resolve };
+  });
+}
+
+/** `POST /api/check` — which of the selection would clobber an existing file. */
+export async function checkDuplicates() {
+  const res = await api.check({ path: state.currentPath, files: selectedInOrder(), config: state.config });
+  state.duplicateNames = res.names; // for row highlighting in the file list
+  return res; // { duplicates, names }
+}
+
+/** `POST /api/rename` — perform the renames on disk. Returns `{ renamed, errors }`. */
+export async function performRename() {
+  state.renaming = true;
+  try {
+    return await api.rename({ path: state.currentPath, files: selectedInOrder(), config: state.config });
+  } finally {
+    state.renaming = false;
   }
 }

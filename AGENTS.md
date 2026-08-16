@@ -128,10 +128,10 @@ arenamer/
 │   ├── package.json  vite.config.js  index.html
 │   └── src/
 │       ├── main.js            # mounts the Svelte app
-│       ├── App.svelte         # root: path bar + file list + modifier panels + live-preview effect
+│       ├── App.svelte         # root: path bar + tree | file list layout + modifier panels + live-preview effect
 │       ├── lib/api.js         # fetch client for /api/*
-│       ├── lib/state/         # store.svelte.js — central $state (files, selection, config, previews)
-│       ├── components/        # FileList.svelte (done); DirectoryTree, RenameButton, … (Milestone 5)
+│       ├── lib/state/         # store.svelte.js — central $state (files, selection, config, previews, dialog)
+│       ├── components/        # FileList, DirectoryTree (+TreeNode), RenameButton, Dialog (done)
 │       └── components/modifiers/  # AddModifier.svelte (done); the other five (Milestone 6)
 └── tests/
     ├── test_engine.py         # engine suite (59 tests) — modifiers, pipeline order, edge cases
@@ -163,15 +163,24 @@ UI calls `/check` (blocking warning if duplicates) → its own confirm dialog �
 
 ### Frontend architecture (`frontend/src`)
 - **`lib/state/store.svelte.js`** — the single source of truth. A module-level Svelte 5
-  `$state` object (files, selection, config, previews) plus action functions (`loadDir`,
-  `openHome`, `toggleSelect`, `selectAll`, `clearSelection`, `refreshPreview`). It uses the
+  `$state` object (files, selection, config, previews, duplicateNames, dialog) plus action
+  functions (`loadDir`, `openHome`, `goUp`, `toggleSelect`, `selectAll`, `clearSelection`,
+  `refreshPreview`, `showDialog`, `checkDuplicates`, `performRename`). It uses the
   `.svelte.js` extension because `$state` is a rune (only compiled in `.svelte*` files).
 - **`lib/api.js`** — thin `fetch` client for the `/api/*` endpoints.
 - **`components/FileList.svelte`** — Name + New Name preview table, multi-select (row/checkbox
-  click toggles; header checkbox selects all). **`components/modifiers/AddModifier.svelte`** —
+  click toggles; header checkbox selects all), a Select-all/Clear toolbar, and red highlighting
+  of rows that would clobber an existing file. **`components/modifiers/AddModifier.svelte`** —
   the Add panel (Milestone 4); the other five panels land in Milestone 6.
-- **`App.svelte`** — composes the path bar, file list and modifier panels; a debounced `$effect`
-  re-runs `/api/preview` whenever config, selection or directory changes (live preview).
+- **`components/DirectoryTree.svelte`** (+ recursive `TreeNode.svelte`) — lazy directory tree
+  rooted at home (`/api/dirs` per expansion); clicking a node re-roots the file list.
+- **`components/RenameButton.svelte`** — drives the rename workflow: `/api/check` (blocking
+  duplicate warning) → confirm dialog → `/api/rename` → success dialog, then re-lists the dir.
+- **`components/Dialog.svelte`** — reusable modal (warning / confirm / info variants; Esc or
+  backdrop click dismisses). Rendered once in `App.svelte`; driven by the store's `dialog` state.
+- **`App.svelte`** — composes the path bar (Home / Up / Open), a two-column layout
+  (directory tree | file list) and the modifier panels; a debounced `$effect` re-runs
+  `/api/preview` whenever config, selection or directory changes (live preview).
 
 > **Preview shows the full name** (`base + extension`), a deliberate *fix* of the original's
 > base-only preview column (see §4): it is more useful and unambiguous. The engine still returns
@@ -213,8 +222,8 @@ and either open http://127.0.0.1:8000 (after `npm run build`) or use the Vite de
 | 2 | Engine: port all 6 modifiers + pipeline order, pure Python, pytest suite green (59 tests) | ✅ done |
 | 3 | API: `/api/list`, `/api/dirs`, `/api/preview`, `/api/check`, `/api/rename` (duplicate check + 409 safety net) | ✅ done |
 | 4 | Frontend core: central store (files, selection, config), live preview column | ✅ done |
-| 5 | UI: file list (multi-select), directory tree, select-all/clear, path bar, Rename button + dialogs | ⬜ next |
-| 6 | Modifier panels: all six with live preview + active indicators (✓/✗) | ⬜ |
+| 5 | UI: file list (multi-select), directory tree, select-all/clear, path bar, Rename button + dialogs | ✅ done |
+| 6 | Modifier panels: all six with live preview + active indicators (✓/✗) | ⬜ next |
 | 7 | i18n: German + English, runtime switcher, system-locale auto-detect | ⬜ |
 | 8 | Polish: dark mode, keyboard shortcuts, drag-and-drop, empty states, error handling | ⬜ |
 
