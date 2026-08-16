@@ -1,5 +1,6 @@
 <script>
   import { state, checkDuplicates, performRename, loadDir, showDialog } from "../lib/state/store.svelte.js";
+  import { t } from "../lib/i18n/index.svelte.js";
 
   const disabled = $derived(state.selection.length === 0 || state.renaming);
 
@@ -27,9 +28,9 @@
     if (check.duplicates > 0) {
       await showDialog({
         variant: "warning",
-        title: "Warning",
-        message: `Found existing duplicate files for ${check.duplicates} new filename(s)!`,
-        buttons: [{ id: "abort", label: "Abort" }],
+        title: t("rename.dupTitle"),
+        message: t("rename.dupMsg", { n: check.duplicates }),
+        buttons: [{ id: "abort", label: t("dialog.abort") }],
         dismissId: "abort",
       });
       return; // duplicateNames stays set, so the offending rows remain highlighted
@@ -38,11 +39,11 @@
     // 2. Confirmation — "Rename N File(s)?" with Ok / Abort.
     const choice = await showDialog({
       variant: "confirm",
-      title: "Rename",
-      message: `Rename ${state.selection.length} File(s)?`,
+      title: t("rename.confirmTitle"),
+      message: t("rename.confirmMsg", { n: state.selection.length }),
       buttons: [
-        { id: "ok", label: "Ok", primary: true },
-        { id: "abort", label: "Abort" },
+        { id: "ok", label: t("dialog.ok"), primary: true },
+        { id: "abort", label: t("dialog.abort") },
       ],
       dismissId: "abort",
     });
@@ -57,24 +58,24 @@
       state.duplicateNames = dupNamesFromError(e);
       await showDialog({
         variant: "warning",
-        title: "Warning",
-        message: `Found existing duplicate files for ${state.duplicateNames.length} new filename(s)!`,
-        buttons: [{ id: "abort", label: "Abort" }],
+        title: t("rename.dupTitle"),
+        message: t("rename.dupMsg", { n: state.duplicateNames.length }),
+        buttons: [{ id: "abort", label: t("dialog.abort") }],
         dismissId: "abort",
       });
       return;
     }
 
     // 4. Success (with a note if any individual file failed).
-    let message = `Successfully renamed ${result.renamed} File(s)!`;
+    let message = t("rename.successMsg", { n: result.renamed });
     if (result.errors.length > 0) {
-      message += `\n${result.errors.length} file(s) could not be renamed.`;
+      message += `\n${t("rename.errorNote", { n: result.errors.length })}`;
     }
     await showDialog({
       variant: "info",
-      title: "Done",
+      title: t("rename.successTitle"),
       message,
-      buttons: [{ id: "ok", label: "Ok" }],
+      buttons: [{ id: "ok", label: t("dialog.ok") }],
       dismissId: "ok",
     });
 
@@ -84,7 +85,7 @@
 </script>
 
 <button class="primary" disabled={disabled} onclick={onRename}>
-  {state.renaming ? "Renaming…" : `Rename${state.selection.length ? ` (${state.selection.length})` : ""}`}
+  {state.renaming ? t("rename.renaming") : `${t("rename.button")}${state.selection.length ? ` (${state.selection.length})` : ""}`}
 </button>
 
 <style>

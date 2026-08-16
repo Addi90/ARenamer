@@ -3,6 +3,7 @@
   // Aliased to avoid the `$state` rune / `state` binding name collision.
   import { state as appState } from "../lib/state/store.svelte.js";
   import * as api from "../lib/api.js";
+  import { t } from "../lib/i18n/index.svelte.js";
   import TreeNode from "./TreeNode.svelte";
 
   // The tree is rooted at the home directory (like the original's QFileSystemModel);
@@ -22,13 +23,13 @@
   });
 </script>
 
-<div class="tree" aria-label="Directories">
+<div class="tree" aria-label={t("tree.directories")}>
   {#if root}
     <TreeNode node={root} depth={0} />
   {:else if appState.busy}
-    <div class="placeholder">Loading…</div>
+    <div class="placeholder">{t("common.loading")}</div>
   {:else}
-    <div class="placeholder">No directory tree available.</div>
+    <div class="placeholder">{t("tree.empty")}</div>
   {/if}
 </div>
 

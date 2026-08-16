@@ -1,5 +1,6 @@
 <script>
   import { state } from "../../lib/state/store.svelte.js";
+  import { t } from "../../lib/i18n/index.svelte.js";
 
   // All bindings target the shared store's `replace` config directly, so edits are
   // reactive and immediately picked up by the live-preview effect in App.svelte.
@@ -9,20 +10,20 @@
   <header>
     <label class="toggle">
       <input type="checkbox" bind:checked={state.config.replace.enabled} />
-      Replace {state.config.replace.enabled ? "✓" : "✗"}
+      {t("replace.title")} {state.config.replace.enabled ? "✓" : "✗"}
     </label>
   </header>
 
   <div class="controls" class:disabled={!state.config.replace.enabled}>
-    <label>Search
-      <input type="text" bind:value={state.config.replace.search} placeholder="e.g. _old" />
+    <label>{t("replace.search")}
+      <input type="text" bind:value={state.config.replace.search} placeholder={t("replace.searchPh")} />
     </label>
-    <label>Replace with
-      <input type="text" bind:value={state.config.replace.replace} placeholder="e.g. _new" />
+    <label>{t("replace.replaceWith")}
+      <input type="text" bind:value={state.config.replace.replace} placeholder={t("replace.replacePh")} />
     </label>
     <div class="row">
-      <label class="check"><input type="checkbox" bind:checked={state.config.replace.regex} /> Regex</label>
-      <label class="check"><input type="checkbox" bind:checked={state.config.replace.case_sensitive} /> Case sensitive</label>
+      <label class="check"><input type="checkbox" bind:checked={state.config.replace.regex} /> {t("common.regex")}</label>
+      <label class="check"><input type="checkbox" bind:checked={state.config.replace.case_sensitive} /> {t("common.caseSensitive")}</label>
     </div>
   </div>
 </section>

@@ -1,5 +1,6 @@
 <script>
   import { state } from "../../lib/state/store.svelte.js";
+  import { t } from "../../lib/i18n/index.svelte.js";
 
   // All bindings target the shared store's `add` config directly, so edits are
   // reactive and immediately picked up by the live-preview effect in App.svelte.
@@ -9,22 +10,22 @@
   <header>
     <label class="toggle">
       <input type="checkbox" bind:checked={state.config.add.enabled} />
-      Add / Insert {state.config.add.enabled ? "✓" : "✗"}
+      {t("add.title")} {state.config.add.enabled ? "✓" : "✗"}
     </label>
   </header>
 
   <div class="controls" class:disabled={!state.config.add.enabled}>
-    <label>Prefix
-      <input type="text" bind:value={state.config.add.prefix} placeholder="e.g. IMG_" />
+    <label>{t("add.prefix")}
+      <input type="text" bind:value={state.config.add.prefix} placeholder={t("add.prefixPh")} />
     </label>
-    <label>Suffix
-      <input type="text" bind:value={state.config.add.suffix} placeholder="e.g. _final" />
+    <label>{t("add.suffix")}
+      <input type="text" bind:value={state.config.add.suffix} placeholder={t("add.suffixPh")} />
     </label>
     <div class="row">
-      <label>Insert
-        <input type="text" bind:value={state.config.add.insert} placeholder="e.g. -copy" />
+      <label>{t("add.insert")}
+        <input type="text" bind:value={state.config.add.insert} placeholder={t("add.insertPh")} />
       </label>
-      <label class="pos">Pos.
+      <label class="pos">{t("common.pos")}
         <input type="number" min="0" bind:value={state.config.add.insert_pos} />
       </label>
     </div>

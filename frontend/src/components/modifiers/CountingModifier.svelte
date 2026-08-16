@@ -1,5 +1,6 @@
 <script>
   import { state } from "../../lib/state/store.svelte.js";
+  import { t } from "../../lib/i18n/index.svelte.js";
 
   // All bindings target the shared store's `counting` config directly, so edits are
   // reactive and immediately picked up by the live-preview effect in App.svelte.
@@ -9,26 +10,26 @@
   <header>
     <label class="toggle">
       <input type="checkbox" bind:checked={state.config.counting.enabled} />
-      Number {state.config.counting.enabled ? "✓" : "✗"}
+      {t("counting.title")} {state.config.counting.enabled ? "✓" : "✗"}
     </label>
   </header>
 
   <div class="controls" class:disabled={!state.config.counting.enabled}>
     <div class="row">
       <select bind:value={state.config.counting.position}>
-        <option value="prefix">Prefix</option>
-        <option value="suffix">Suffix</option>
-        <option value="insert">At position</option>
+        <option value="prefix">{t("position.prefix")}</option>
+        <option value="suffix">{t("position.suffix")}</option>
+        <option value="insert">{t("position.insert")}</option>
       </select>
-      <label title="First number in the sequence (files are numbered in list order)">Start
+      <label title={t("counting.startTitle")}>{t("counting.start")}
         <input type="number" min="1" bind:value={state.config.counting.start} />
       </label>
-      <label title="Zero-pad the number to this width (e.g. 3 → 001)">Pad
+      <label title={t("counting.padTitle")}>{t("counting.pad")}
         <input type="number" min="0" bind:value={state.config.counting.padding} />
       </label>
     </div>
     {#if state.config.counting.position === "insert"}
-      <label class="pos">Insert at position
+      <label class="pos">{t("counting.insertAt")}
         <input type="number" min="0" bind:value={state.config.counting.insert_pos} />
       </label>
     {/if}

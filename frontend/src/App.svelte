@@ -11,6 +11,7 @@
   import CountingModifier from "./components/modifiers/CountingModifier.svelte";
   import DateModifier from "./components/modifiers/DateModifier.svelte";
   import { state as appState, loadDir, openHome, goUp, refreshPreview } from "./lib/state/store.svelte.js";
+  import { language, setLanguage, t, languages } from "./lib/i18n/index.svelte.js";
 
   // Draft path in the input; committed only on Open/Enter (so typing doesn't
   // re-trigger preview with a half-typed path).
@@ -40,8 +41,13 @@
       appState.previews = {};
       return;
     }
-    const t = setTimeout(() => refreshPreview(), 150);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => refreshPreview(), 150);
+    return () => clearTimeout(timer);
+  });
+
+  // Keep <html lang> in sync (accessibility / screen readers).
+  $effect(() => {
+    document.documentElement.lang = language.current; // eslint-disable-line no-unused-expressions
   });
 
   onMount(() => {
@@ -50,14 +56,26 @@
 </script>
 
 <main class="shell">
-  <h1>A-Renamer Tool</h1>
-  <p class="sub">Select files, configure modifiers, preview the new names, then rename.</p>
+  <header class="head">
+    <div>
+      <h1>{t("app.title")}</h1>
+      <p class="sub">{t("app.subtitle")}</p>
+    </div>
+    <label class="lang">
+      {t("lang.label")}
+      <select value={language.current} onchange={(e) => setLanguage(e.target.value)}>
+        {#each languages as l (l.code)}
+          <option value={l.code}>{l.label}</option>
+        {/each}
+      </select>
+    </label>
+  </header>
 
   <div class="pathbar">
-    <button onclick={openHome} title="Open the home directory">Home</button>
-    <button disabled={!canGoUp} onclick={goUp} title="Open the parent directory">Up</button>
+    <button onclick={openHome} title={t("app.homeTitle")}>{t("app.home")}</button>
+    <button disabled={!canGoUp} onclick={goUp} title={t("app.upTitle")}>{t("app.up")}</button>
     <input type="text" class="path" bind:value={pathInput} placeholder="/path/to/directory" onkeydown={(e) => e.key === "Enter" && commitPath()} />
-    <button class="primary" onclick={commitPath}>Open</button>
+    <button class="primary" onclick={commitPath}>{t("app.open")}</button>
   </div>
 
   {#if appState.error}
@@ -97,8 +115,11 @@
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     color: #1f2430;
   }
+  .head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
   h1 { margin-bottom: 2px; font-size: 1.6rem; }
   .sub { color: #6b7280; margin-top: 0; font-size: 0.9rem; }
+  .lang { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #4b5563; }
+  .lang select { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; font-size: 0.9rem; color: #1f2430; }
 
   .pathbar { display: flex; gap: 8px; margin: 16px 0; }
   .pathbar input.path { flex: 1; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }

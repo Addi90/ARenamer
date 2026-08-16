@@ -1,5 +1,6 @@
 <script>
   import { state, toggleSelect, selectAll, clearSelection } from "../lib/state/store.svelte.js";
+  import { t } from "../lib/i18n/index.svelte.js";
 
   // Optional actions slot (Svelte 5 function-prop syntax) — e.g. the Rename button.
   let { actions } = $props();
@@ -18,8 +19,8 @@
 </script>
 
 <div class="toolbar">
-  <button onclick={selectAll}>Select all</button>
-  <button onclick={clearSelection} disabled={state.selection.length === 0}>Clear</button>
+  <button onclick={selectAll}>{t("fileList.selectAll")}</button>
+  <button onclick={clearSelection} disabled={state.selection.length === 0}>{t("fileList.clear")}</button>
   <span class="spacer"></span>
   {@render actions?.()}
 </div>
@@ -28,10 +29,10 @@
   <thead>
     <tr>
       <th class="col-check">
-        <input type="checkbox" aria-label="Select all" checked={allSelected} onchange={onHeaderToggle} />
+        <input type="checkbox" aria-label={t("fileList.selectAll")} checked={allSelected} onchange={onHeaderToggle} />
       </th>
-      <th class="col-name">Name</th>
-      <th class="col-new">New Name</th>
+      <th class="col-name">{t("fileList.name")}</th>
+      <th class="col-new">{t("fileList.newName")}</th>
     </tr>
   </thead>
   <tbody>
@@ -51,7 +52,7 @@
     {/each}
     {#if state.files.length === 0}
       <tr class="empty">
-        <td colspan="3">{state.busy ? "Loading…" : "No files in this directory."}</td>
+        <td colspan="3">{state.busy ? t("common.loading") : t("fileList.empty")}</td>
       </tr>
     {/if}
   </tbody>

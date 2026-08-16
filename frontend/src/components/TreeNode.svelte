@@ -1,6 +1,7 @@
 <script>
   import { state, loadDir } from "../lib/state/store.svelte.js";
   import * as api from "../lib/api.js";
+  import { t } from "../lib/i18n/index.svelte.js";
   // Self-import for recursion (the modern replacement for `<svelte:self>`).
   import TreeNode from "./TreeNode.svelte";
 
@@ -43,7 +44,7 @@
 </script>
 
 <div class="row" style:padding-left="{depth * 14}px">
-  <button class="twisty" onclick={onTwisty} aria-label={node.expanded ? "Collapse" : "Expand"}>
+  <button class="twisty" onclick={onTwisty} aria-label={node.expanded ? t("tree.collapse") : t("tree.expand")}>
     {#if node.loading}…{:else if node.expanded}▾{:else if node.loaded}▸{/if}
   </button>
   <button class="label" class:current={isCurrent} title={node.path} onclick={onLabel}>{node.name}</button>

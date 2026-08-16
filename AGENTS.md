@@ -133,6 +133,7 @@ arenamer/
 │       ├── App.svelte         # root: path bar + tree | file list layout + modifier panels + live-preview effect
 │       ├── lib/api.js         # fetch client for /api/*
 │       ├── lib/config.js      # defaultConfig() + sanitizeConfig() (plain JS, no runes)
+│       ├── lib/i18n/          # en.js + de.js (string tables) and index.svelte.js (language $state, t())
 │       ├── lib/state/         # store.svelte.js — central $state (files, selection, config, previews, dialog)
 │       ├── components/        # FileList, DirectoryTree (+TreeNode), RenameButton, Dialog (done)
 │       └── components/modifiers/  # all six panels: Replace, IfThen, Remove, Add, Counting, Date
@@ -177,6 +178,14 @@ dialog → `/rename`.
   backend `Config.to_dict()`) and `sanitizeConfig()` (coerces every numeric field to an int
   before each API call — Svelte binds a cleared `<input type="number">` to `null`, which
   would otherwise crash the engine and 500 the live preview).
+- **`lib/i18n/`** — runtime internationalization (German + English). `en.js` is the source
+  of truth; `de.js` has the identical key set (wording taken from the original Qt app's
+  `languages/ARenamerTool_de_DE.ts`, modernized to standard German capitalization).
+  `index.svelte.js` holds the language as a `$state` property, so every `t("key")` call in
+  a template is reactive — switching re-renders all strings. Startup detection mirrors the
+  original's `QLocale::system()`: a saved user choice (localStorage) wins, otherwise
+  `navigator.language` (`de*` → German). All UI strings go through `t()`; backend error
+  messages stay English (technical, not user-facing copy).
 - **`components/FileList.svelte`** — Name + New Name preview table, multi-select (row/checkbox
   click toggles; header checkbox selects all), a Select-all/Clear toolbar, and red highlighting
   of rows that would clobber an existing file. **`components/modifiers/`** — all six panels
@@ -189,9 +198,10 @@ dialog → `/rename`.
   duplicate warning) → confirm dialog → `/api/rename` → success dialog, then re-lists the dir.
 - **`components/Dialog.svelte`** — reusable modal (warning / confirm / info variants; Esc or
   backdrop click dismisses). Rendered once in `App.svelte`; driven by the store's `dialog` state.
-- **`App.svelte`** — composes the path bar (Home / Up / Open), a two-column layout
-  (directory tree | file list) and the modifier panels; a debounced `$effect` re-runs
-  `/api/preview` whenever config, selection or directory changes (live preview).
+- **`App.svelte`** — composes the header (title + language switcher), the path bar
+  (Home / Up / Open), a two-column layout (directory tree | file list) and the modifier
+  panels; a debounced `$effect` re-runs `/api/preview` whenever config, selection or
+  directory changes (live preview).
 
 > **Preview shows the full name** (`base + extension`), a deliberate *fix* of the original's
 > base-only preview column (see §4): it is more useful and unambiguous. The engine still returns
@@ -235,8 +245,8 @@ and either open http://127.0.0.1:8000 (after `npm run build`) or use the Vite de
 | 4 | Frontend core: central store (files, selection, config), live preview column | ✅ done |
 | 5 | UI: file list (multi-select), directory tree, select-all/clear, path bar, Rename button + dialogs | ✅ done |
 | 6 | Modifier panels: all six with live preview + active indicators (✓/✗) | ✅ done |
-| 7 | i18n: German + English, runtime switcher, system-locale auto-detect | ⬜ next |
-| 8 | Polish: dark mode, keyboard shortcuts, drag-and-drop, empty states, error handling | ⬜ |
+| 7 | i18n: German + English, runtime switcher, system-locale auto-detect | ✅ done |
+| 8 | Polish: dark mode, keyboard shortcuts, drag-and-drop, empty states, error handling | ⬜ next |
 
 ### Conventions for future work
 - Keep the engine **pure** (no web/fs-side-effect deps beyond what a rename needs); put
