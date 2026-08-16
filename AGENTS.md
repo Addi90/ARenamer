@@ -99,7 +99,8 @@ The original had a few quirks. This rebuild makes explicit choices:
 - **If-Then condition uses the original base name — PRESERVED.** The condition is tested
   against the immutable `base`, while the consequence applies to the evolving `new_base`.
 - **Numbering follows list order — PRESERVED.**
-- **Preview shows the base name** (extension hidden) in the preview column — PRESERVED.
+- **Preview shows the full name** (`base + extension`) in the preview column — FIXED (the
+  original showed the base name only). More useful and unambiguous; a display choice only.
 - **No separator between a name and an appended number/date — PRESERVED (faithful).** The
   original appends/prepends the value directly, so `name` + number-suffix `01` + date-suffix
   yields e.g. `name012024-05-01`. If a nicer result is wanted, the user combines with **Add**
@@ -127,10 +128,11 @@ arenamer/
 │   ├── package.json  vite.config.js  index.html
 │   └── src/
 │       ├── main.js            # mounts the Svelte app
-│       ├── App.svelte         # root component (scaffold for now)
-│       ├── lib/state/         # central store: files, selection, config (Milestone 4)
-│       ├── components/        # FileList, DirectoryTree, RenameButton, … (Milestone 5)
-│       └── components/modifiers/  # one component per modifier (Milestone 6)
+│       ├── App.svelte         # root: path bar + file list + modifier panels + live-preview effect
+│       ├── lib/api.js         # fetch client for /api/*
+│       ├── lib/state/         # store.svelte.js — central $state (files, selection, config, previews)
+│       ├── components/        # FileList.svelte (done); DirectoryTree, RenameButton, … (Milestone 5)
+│       └── components/modifiers/  # AddModifier.svelte (done); the other five (Milestone 6)
 └── tests/
     ├── test_engine.py         # engine suite (59 tests) — modifiers, pipeline order, edge cases
     └── test_api.py            # API suite (10 tests) — list/dirs/preview/check/rename over HTTP
@@ -150,6 +152,7 @@ is trivially unit-testable and reusable.
 ### API surface (`backend/api/routes.py`, all under `/api`)
 - `GET  /list?path=` — files in a directory (name, size, mtime), sorted; subdirs excluded.
 - `GET  /dirs?path=` — immediate subdirectories (for lazy tree navigation).
+- `GET  /home`       — the user's home directory (default starting point for the UI).
 - `POST /preview`  `{path, files[], config}` → per-file new-name preview.
 - `POST /check`    `{path, files[], config}` → duplicate names that would clobber existing.
 - `POST /rename`   `{path, files[], config}` → renames on disk; **409** if any would clobber.
@@ -157,6 +160,22 @@ is trivially unit-testable and reusable.
 `config` is a plain JSON object matching `Config.to_dict()` (see §3); the backend converts
 it via `Config.from_dict`, so partial configs from the UI are fine. The rename workflow is:
 UI calls `/check` (blocking warning if duplicates) → its own confirm dialog → `/rename`.
+
+### Frontend architecture (`frontend/src`)
+- **`lib/state/store.svelte.js`** — the single source of truth. A module-level Svelte 5
+  `$state` object (files, selection, config, previews) plus action functions (`loadDir`,
+  `openHome`, `toggleSelect`, `selectAll`, `clearSelection`, `refreshPreview`). It uses the
+  `.svelte.js` extension because `$state` is a rune (only compiled in `.svelte*` files).
+- **`lib/api.js`** — thin `fetch` client for the `/api/*` endpoints.
+- **`components/FileList.svelte`** — Name + New Name preview table, multi-select (row/checkbox
+  click toggles; header checkbox selects all). **`components/modifiers/AddModifier.svelte`** —
+  the Add panel (Milestone 4); the other five panels land in Milestone 6.
+- **`App.svelte`** — composes the path bar, file list and modifier panels; a debounced `$effect`
+  re-runs `/api/preview` whenever config, selection or directory changes (live preview).
+
+> **Preview shows the full name** (`base + extension`), a deliberate *fix* of the original's
+> base-only preview column (see §4): it is more useful and unambiguous. The engine still returns
+> `new_base`/`ext` separately, so this is a display choice only.
 
 ---
 
@@ -193,8 +212,8 @@ and either open http://127.0.0.1:8000 (after `npm run build`) or use the Vite de
 | 1 | Scaffold: FastAPI + pywebview backend, Vite+Svelte frontend, static mount, one-command run | ✅ done (scaffold) |
 | 2 | Engine: port all 6 modifiers + pipeline order, pure Python, pytest suite green (59 tests) | ✅ done |
 | 3 | API: `/api/list`, `/api/dirs`, `/api/preview`, `/api/check`, `/api/rename` (duplicate check + 409 safety net) | ✅ done |
-| 4 | Frontend core: central store (files, selection, config), live preview column | ⬜ next |
-| 5 | UI: file list (multi-select), directory tree, select-all/clear, path bar, Rename button + dialogs | ⬜ |
+| 4 | Frontend core: central store (files, selection, config), live preview column | ✅ done |
+| 5 | UI: file list (multi-select), directory tree, select-all/clear, path bar, Rename button + dialogs | ⬜ next |
 | 6 | Modifier panels: all six with live preview + active indicators (✓/✗) | ⬜ |
 | 7 | i18n: German + English, runtime switcher, system-locale auto-detect | ⬜ |
 | 8 | Polish: dark mode, keyboard shortcuts, drag-and-drop, empty states, error handling | ⬜ |

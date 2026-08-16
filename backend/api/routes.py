@@ -69,6 +69,12 @@ def list_dirs(path: str = Query(...)) -> DirsResponse:
     return DirsResponse(path=path, dirs=entries)
 
 
+@router.get("/home")
+def home() -> dict:
+    """The user's home directory — a sensible default starting point for the UI."""
+    return {"path": os.path.expanduser("~")}
+
+
 @router.post("/preview", response_model=PreviewResponse)
 def api_preview(req: PreviewRequest) -> PreviewResponse:
     """Compute the new name for each selected file under the given config."""
