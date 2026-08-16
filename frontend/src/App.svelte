@@ -4,7 +4,12 @@
   import DirectoryTree from "./components/DirectoryTree.svelte";
   import RenameButton from "./components/RenameButton.svelte";
   import Dialog from "./components/Dialog.svelte";
+  import ReplaceModifier from "./components/modifiers/ReplaceModifier.svelte";
+  import IfThenModifier from "./components/modifiers/IfThenModifier.svelte";
+  import RemoveModifier from "./components/modifiers/RemoveModifier.svelte";
   import AddModifier from "./components/modifiers/AddModifier.svelte";
+  import CountingModifier from "./components/modifiers/CountingModifier.svelte";
+  import DateModifier from "./components/modifiers/DateModifier.svelte";
   import { state as appState, loadDir, openHome, goUp, refreshPreview } from "./lib/state/store.svelte.js";
 
   // Draft path in the input; committed only on Open/Enter (so typing doesn't
@@ -68,8 +73,15 @@
         <RenameButton slot="actions" />
       </FileList>
 
+      <!-- Panels are rendered in pipeline order (Replace → If-Then → Remove → Add →
+           Counting → Date) so the composition order is visible to the user. -->
       <section class="modifiers">
+        <ReplaceModifier />
+        <IfThenModifier />
+        <RemoveModifier />
         <AddModifier />
+        <CountingModifier />
+        <DateModifier />
       </section>
     </div>
   </div>
@@ -103,5 +115,5 @@
   .tree-pane :global(.tree) { max-height: calc(100vh - 260px); min-height: 240px; }
   .content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 
-  .modifiers { display: flex; flex-direction: column; gap: 12px; }
+  .modifiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
 </style>

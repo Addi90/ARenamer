@@ -187,6 +187,17 @@ class TestReplace:
         compute([f], Config(replace=ReplaceConfig(enabled=True, search="(", replace="#", regex=True)))
         assert f.new_base == "abc"
 
+    def test_empty_search_is_noop(self):
+        # regression: str.replace("", x) would insert the replacement between every char
+        f = one("abc")
+        compute([f], Config(replace=ReplaceConfig(enabled=True, search="", replace="X")))
+        assert f.new_base == "abc"
+
+    def test_empty_regex_search_is_noop(self):
+        f = one("abc")
+        compute([f], Config(replace=ReplaceConfig(enabled=True, search="", replace="X", regex=True)))
+        assert f.new_base == "abc"
+
 
 # --------------------------------------------------------------------------- #
 # Counting / Number modifier (5e)
@@ -440,3 +451,18 @@ class TestConfigSerialization:
     def test_custom_date_parsed_from_string(self):
         cfg = Config.from_dict({"date": {"enabled": True, "source": "custom", "custom_date": "2024-05-01"}})
         assert cfg.date.custom_date == date(2024, 5, 1)
+
+    def test_null_numeric_falls_back_to_default(self):
+        # a cleared UI number input serializes as null; it must not crash the engine
+        cfg = Config.from_dict({"add": {"enabled": True, "insert_pos": None},
+                                "remove": {"front": None, "back": None}})
+        assert cfg.add.insert_pos == 0
+        assert cfg.remove.front == 0 and cfg.remove.back == 0
+
+    def test_null_bool_falls_back_to_default(self):
+        cfg = Config.from_dict({"replace": {"enabled": None, "regex": None}})
+        assert cfg.replace.enabled is False and cfg.replace.regex is False
+
+    def test_null_custom_date_stays_none(self):
+        cfg = Config.from_dict({"date": {"enabled": True, "source": "custom", "custom_date": None}})
+        assert cfg.date.custom_date is None

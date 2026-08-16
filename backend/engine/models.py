@@ -11,7 +11,7 @@ to cross-check against the reference.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import MISSING, dataclass, field, asdict
 from datetime import date
 from typing import Optional
 
@@ -171,14 +171,26 @@ class Config:
         """Build a Config from a plain dict (e.g. parsed JSON).
 
         Missing keys fall back to each dataclass's defaults, so partial configs
-        from the UI are safe. Unknown keys are ignored.
+        from the UI are safe. Unknown keys are ignored. ``null`` values fall back
+        to the field's default too (a cleared UI input must not 500 the API).
         """
         data = data or {}
 
         def _build(dc_type, key):
             raw = data.get(key) or {}
-            valid = {f for f in dc_type.__dataclass_fields__}  # type: ignore[attr-defined]
-            return dc_type(**{k: v for k, v in raw.items() if k in valid})
+            spec = dc_type.__dataclass_fields__  # type: ignore[attr-defined]
+            out = {}
+            for k, v in raw.items():
+                if k not in spec:
+                    continue  # unknown keys are ignored
+                if v is None:  # null -> field default (a cleared UI input must not crash)
+                    f = spec[k]
+                    if f.default is not MISSING:
+                        v = f.default
+                    elif f.default_factory is not None:
+                        v = f.default_factory()
+                out[k] = v
+            return dc_type(**out)
 
         date_cfg = _build(DateConfig, "date")
         # JSON carries the custom date as an ISO string ("2024-05-01"); normalize it.

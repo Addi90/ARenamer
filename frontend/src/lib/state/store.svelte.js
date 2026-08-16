@@ -5,7 +5,7 @@
  * equivalent of the original app's static modifier state + `Renamer::files`. It holds:
  *   - navigation:  currentPath, files (the directory listing)
  *   - selection:   the filenames chosen for renaming (in list order)
- *   - config:      the full modifier recipe (mirrors backend `Config.to_dict()`)
+ *   - config:      the full modifier recipe (shape from `lib/config.js`, mirrors backend `Config.to_dict()`)
  *   - previews:    per-file new-name results from `/api/preview` (keyed by name)
  *   - ui:          busy / error flags
  *
@@ -17,31 +17,9 @@
 // Note: `$state` is a Svelte 5 rune (global, not imported) — which is why this
 // file uses the `.svelte.js` extension so the Svelte plugin compiles it.
 import * as api from "../api.js";
+import { defaultConfig, sanitizeConfig } from "../config.js";
 
-/**
- * A fresh, all-disabled modifier config. Field names and values MUST mirror the
- * backend's `Config.to_dict()` exactly — `Config.from_dict` silently ignores unknown
- * keys, so a mismatched field name is a silent no-op (e.g. `pos` vs `insert_pos`).
- */
-export function defaultConfig() {
-  return {
-    add: { enabled: false, prefix: "", suffix: "", insert: "", insert_pos: 0 },
-    ifthen: {
-      enabled: false,
-      contains_not: false, // condition mode: CONTAINS (false) / CONTAINS NOT (true)
-      expression: "",
-      regex: false,
-      case_sensitive: false,
-      action: "prefix", // "prefix" | "insert" | "suffix"
-      string: "",
-      insert_pos: 0,
-    },
-    replace: { enabled: false, search: "", replace: "", regex: false, case_sensitive: false },
-    remove: { enabled: false, front: 0, back: 0, range_enabled: false, range_start: 1, range_end: 1, until_end: false },
-    counting: { enabled: false, position: "prefix", start: 1, padding: 0, insert_pos: 0 },
-    date: { enabled: false, format: "ymd", separator: "-", source: "today", custom_date: "", position: "suffix", insert_pos: 0 },
-  };
-}
+export { defaultConfig };
 
 export const state = $state({
   currentPath: "",
@@ -129,7 +107,7 @@ export async function refreshPreview() {
     return;
   }
   try {
-    const res = await api.preview({ path: state.currentPath, files, config: state.config });
+    const res = await api.preview({ path: state.currentPath, files, config: sanitizeConfig(state.config) });
     state.previews = res.previews;
   } catch (e) {
     state.error = e.message || String(e);
@@ -150,7 +128,7 @@ export function showDialog({ title, message, variant = "info", buttons, dismissI
 
 /** `POST /api/check` — which of the selection would clobber an existing file. */
 export async function checkDuplicates() {
-  const res = await api.check({ path: state.currentPath, files: selectedInOrder(), config: state.config });
+  const res = await api.check({ path: state.currentPath, files: selectedInOrder(), config: sanitizeConfig(state.config) });
   state.duplicateNames = res.names; // for row highlighting in the file list
   return res; // { duplicates, names }
 }
@@ -159,7 +137,7 @@ export async function checkDuplicates() {
 export async function performRename() {
   state.renaming = true;
   try {
-    return await api.rename({ path: state.currentPath, files: selectedInOrder(), config: state.config });
+    return await api.rename({ path: state.currentPath, files: selectedInOrder(), config: sanitizeConfig(state.config) });
   } finally {
     state.renaming = false;
   }

@@ -9,7 +9,8 @@ double-applying the replacement. This port applies the replacement exactly once 
 the selected mode (see AGENTS.md section 9).
 
 An invalid regular expression is treated as a no-op rather than raising, so a
-half-typed pattern never crashes the live preview.
+half-typed pattern never crashes the live preview. An empty search is also a no-op:
+``str.replace("", x)`` would otherwise insert the replacement between every character.
 """
 
 from __future__ import annotations
@@ -21,6 +22,8 @@ from .models import ReplaceConfig, RenameFile
 
 def modify(files: list[RenameFile], cfg: ReplaceConfig) -> None:
     for f in files:
+        if not cfg.search:
+            continue  # empty search is a no-op (str.replace("", x) would insert between every char)
         if cfg.regex:
             flags = 0 if cfg.case_sensitive else re.IGNORECASE
             try:

@@ -106,6 +106,8 @@ The original had a few quirks. This rebuild makes explicit choices:
   yields e.g. `name012024-05-01`. If a nicer result is wanted, the user combines with **Add**
   (e.g. an `-` suffix). *Candidate enhancement for the modern UI: an optional separator.*
 - **Invalid regex is a no-op** (does not crash the live preview) — a deliberate safety choice.
+- **Empty Replace search is a no-op** (a deliberate safety choice). `str.replace("", x)` would
+  otherwise insert the replacement between every character and mangle names on disk.
 
 ---
 
@@ -130,11 +132,12 @@ arenamer/
 │       ├── main.js            # mounts the Svelte app
 │       ├── App.svelte         # root: path bar + tree | file list layout + modifier panels + live-preview effect
 │       ├── lib/api.js         # fetch client for /api/*
+│       ├── lib/config.js      # defaultConfig() + sanitizeConfig() (plain JS, no runes)
 │       ├── lib/state/         # store.svelte.js — central $state (files, selection, config, previews, dialog)
 │       ├── components/        # FileList, DirectoryTree (+TreeNode), RenameButton, Dialog (done)
-│       └── components/modifiers/  # AddModifier.svelte (done); the other five (Milestone 6)
+│       └── components/modifiers/  # all six panels: Replace, IfThen, Remove, Add, Counting, Date
 └── tests/
-    ├── test_engine.py         # engine suite (59 tests) — modifiers, pipeline order, edge cases
+    ├── test_engine.py         # engine suite (61 tests) — modifiers, pipeline order, edge cases
     └── test_api.py            # API suite (10 tests) — list/dirs/preview/check/rename over HTTP
 ```
 
@@ -158,8 +161,10 @@ is trivially unit-testable and reusable.
 - `POST /rename`   `{path, files[], config}` → renames on disk; **409** if any would clobber.
 
 `config` is a plain JSON object matching `Config.to_dict()` (see §3); the backend converts
-it via `Config.from_dict`, so partial configs from the UI are fine. The rename workflow is:
-UI calls `/check` (blocking warning if duplicates) → its own confirm dialog → `/rename`.
+it via `Config.from_dict`, so partial configs from the UI are fine. Unknown keys are ignored
+and `null` values fall back to each field's default, so a cleared UI input never 500s. The
+rename workflow is: UI calls `/check` (blocking warning if duplicates) → its own confirm
+dialog → `/rename`.
 
 ### Frontend architecture (`frontend/src`)
 - **`lib/state/store.svelte.js`** — the single source of truth. A module-level Svelte 5
@@ -168,10 +173,16 @@ UI calls `/check` (blocking warning if duplicates) → its own confirm dialog �
   `refreshPreview`, `showDialog`, `checkDuplicates`, `performRename`). It uses the
   `.svelte.js` extension because `$state` is a rune (only compiled in `.svelte*` files).
 - **`lib/api.js`** — thin `fetch` client for the `/api/*` endpoints.
+- **`lib/config.js`** — `defaultConfig()` (the all-disabled recipe; its shape MUST mirror
+  backend `Config.to_dict()`) and `sanitizeConfig()` (coerces every numeric field to an int
+  before each API call — Svelte binds a cleared `<input type="number">` to `null`, which
+  would otherwise crash the engine and 500 the live preview).
 - **`components/FileList.svelte`** — Name + New Name preview table, multi-select (row/checkbox
   click toggles; header checkbox selects all), a Select-all/Clear toolbar, and red highlighting
-  of rows that would clobber an existing file. **`components/modifiers/AddModifier.svelte`** —
-  the Add panel (Milestone 4); the other five panels land in Milestone 6.
+  of rows that would clobber an existing file. **`components/modifiers/`** — all six panels
+  (Replace, If-Then, Remove, Add, Counting/Number, Date), each a self-contained section with
+  an enable toggle + ✓/✗ indicator and controls greyed out when disabled; panels are rendered
+  in `App.svelte` in pipeline order (§2) on a responsive grid.
 - **`components/DirectoryTree.svelte`** (+ recursive `TreeNode.svelte`) — lazy directory tree
   rooted at home (`/api/dirs` per expansion); clicking a node re-roots the file list.
 - **`components/RenameButton.svelte`** — drives the rename workflow: `/api/check` (blocking
@@ -223,8 +234,8 @@ and either open http://127.0.0.1:8000 (after `npm run build`) or use the Vite de
 | 3 | API: `/api/list`, `/api/dirs`, `/api/preview`, `/api/check`, `/api/rename` (duplicate check + 409 safety net) | ✅ done |
 | 4 | Frontend core: central store (files, selection, config), live preview column | ✅ done |
 | 5 | UI: file list (multi-select), directory tree, select-all/clear, path bar, Rename button + dialogs | ✅ done |
-| 6 | Modifier panels: all six with live preview + active indicators (✓/✗) | ⬜ next |
-| 7 | i18n: German + English, runtime switcher, system-locale auto-detect | ⬜ |
+| 6 | Modifier panels: all six with live preview + active indicators (✓/✗) | ✅ done |
+| 7 | i18n: German + English, runtime switcher, system-locale auto-detect | ⬜ next |
 | 8 | Polish: dark mode, keyboard shortcuts, drag-and-drop, empty states, error handling | ⬜ |
 
 ### Conventions for future work
