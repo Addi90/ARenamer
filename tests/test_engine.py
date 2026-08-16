@@ -332,6 +332,47 @@ class TestDate:
         compute([f], cfg)
         assert f.new_base.startswith("data") and len(f.new_base) == len("data2023-11-14")
 
+    def test_name_separator_suffix(self):
+        f = one("report")
+        cfg = Config(date=DateConfig(enabled=True, source="custom", custom_date=date(2024, 5, 1), format="ymd", position="suffix", name_separator="-"))
+        compute([f], cfg)
+        assert f.new_base == "report-2024-05-01"
+
+    def test_name_separator_prefix(self):
+        f = one("report")
+        cfg = Config(date=DateConfig(enabled=True, source="custom", custom_date=date(2024, 1, 9), format="ymd", position="prefix", name_separator="_"))
+        compute([f], cfg)
+        assert f.new_base == "2024-01-09_report"
+
+    def test_name_separator_insert_both_sides(self):
+        f = one("report")
+        cfg = Config(date=DateConfig(enabled=True, source="custom", custom_date=date(2024, 1, 9), format="ymd", position="insert", insert_pos=2, name_separator="-"))
+        compute([f], cfg)
+        assert f.new_base == "re-2024-01-09-port"
+
+    def test_name_separator_insert_at_start_has_no_leading_sep(self):
+        f = one("report")
+        cfg = Config(date=DateConfig(enabled=True, source="custom", custom_date=date(2024, 1, 9), format="ymd", position="insert", insert_pos=0, name_separator="-"))
+        compute([f], cfg)
+        assert f.new_base == "2024-01-09-report"
+
+    def test_name_separator_empty_base_has_no_dangling_sep(self):
+        # A previous modifier (Remove) emptied the base; no dangling separator.
+        f = one("x")
+        cfg = Config(
+            remove=RemoveConfig(enabled=True, front=1),
+            date=DateConfig(enabled=True, source="custom", custom_date=date(2024, 5, 1), format="ymd", position="suffix", name_separator="-"),
+        )
+        compute([f], cfg)
+        assert f.new_base == "2024-05-01"
+
+    def test_name_separator_default_empty_is_faithful(self):
+        # Default (no name separator) keeps the original's direct concatenation.
+        f = one("report")
+        cfg = Config(date=DateConfig(enabled=True, source="custom", custom_date=date(2024, 5, 1), format="ymd"))
+        compute([f], cfg)
+        assert f.new_base == "report2024-05-01"
+
 
 # --------------------------------------------------------------------------- #
 # Pipeline ordering (AGENTS.md section 3) — the critical contract

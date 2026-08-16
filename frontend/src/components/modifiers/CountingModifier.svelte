@@ -51,6 +51,6 @@
   label { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #4b5563; }
   input[type="number"] { width: 72px; padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 6px; }
   select { padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; font-size: 0.85rem; color: #374151; }
-  .row { display: flex; gap: 12px; align-items: center; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .pos { flex: 0 0 auto; }
 </style>

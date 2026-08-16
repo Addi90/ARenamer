@@ -25,6 +25,9 @@
       <label class="sep" title={t("date.sepTitle")}>{t("date.separator")}
         <input type="text" bind:value={state.config.date.separator} />
       </label>
+      <label class="sep" title={t("date.nameSepTitle")}>{t("date.nameSeparator")}
+        <input type="text" bind:value={state.config.date.name_separator} />
+      </label>
     </div>
     <div class="row">
       <select bind:value={state.config.date.source}>
@@ -69,7 +72,7 @@
   input[type="number"] { width: 72px; padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 6px; }
   input[type="date"] { padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 6px; }
   select { padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; font-size: 0.85rem; color: #374151; }
-  .row { display: flex; gap: 12px; align-items: center; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .sep input[type="text"] { flex: 0 1 90px; }
   .pos { flex: 0 0 auto; }
 </style>

@@ -42,6 +42,6 @@
   .controls.disabled { opacity: 0.45; pointer-events: none; }
   label { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #4b5563; }
   input[type="text"] { flex: 1; padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-  .row { display: flex; gap: 12px; align-items: center; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .check { cursor: pointer; }
 </style>

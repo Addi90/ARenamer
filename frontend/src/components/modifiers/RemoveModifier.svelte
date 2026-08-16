@@ -50,7 +50,7 @@
   .controls.disabled { opacity: 0.45; pointer-events: none; }
   label { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #4b5563; }
   input[type="number"] { width: 72px; padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 6px; }
-  .row { display: flex; gap: 12px; align-items: center; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .row.dimmed { opacity: 0.45; }
   .check { cursor: pointer; }
 </style>

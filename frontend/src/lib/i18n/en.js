@@ -106,8 +106,10 @@ export const en = {
 
   // date modifier (format options DD-MM-YYYY etc. are codes, not translated)
   "date.title": "Date",
-  "date.separator": "Separator",
+  "date.separator": "Date separator",
   "date.sepTitle": "Character between day, month and year",
+  "date.nameSeparator": "Name separator",
+  "date.nameSepTitle": "Character between the date and the rest of the name (empty = none)",
   "date.created": "Created",
   "date.modified": "Last modified",
   "date.today": "Today",

@@ -74,7 +74,7 @@ already implemented and tested (Milestone 2); the UI wiring lands in later miles
 - **Replace** — search (plain or regex, case option) → replacement; replaces all occurrences.
 - **Remove** — first-n chars, last-n chars, and a character range (start–end) with an "until end" option. Ranges that run past a shorter name clamp to the actual end (no out-of-bounds).
 - **Counting / Number** — start number, zero-padding (e.g. `001`), placed as prefix / suffix / insert-at-pos. Numbers follow on-screen list order, not alphabetical.
-- **Date** — format (DD-MM-YYYY / YYYY-MM-DD / MM-DD-YYYY), separator, source (created / last-modified / today / custom + date picker), placed as prefix / suffix / insert-at-pos.
+- **Date** — format (DD-MM-YYYY / YYYY-MM-DD / MM-DD-YYYY), date separator, optional name separator (between the date and the rest of the name; empty = direct concatenation), source (created / last-modified / today / custom + date picker), placed as prefix / suffix / insert-at-pos.
 
 ### Safety & workflow (the Rename button)
 1. **Duplicate check** — re-run the pipeline; if any resulting name already exists on disk (skipping unchanged files), show a blocking **Warning** ("Found existing duplicate files for N new filename(s)!") with only an Abort button, and stop.
@@ -101,10 +101,14 @@ The original had a few quirks. This rebuild makes explicit choices:
 - **Numbering follows list order — PRESERVED.**
 - **Preview shows the full name** (`base + extension`) in the preview column — FIXED (the
   original showed the base name only). More useful and unambiguous; a display choice only.
-- **No separator between a name and an appended number/date — PRESERVED (faithful).** The
-  original appends/prepends the value directly, so `name` + number-suffix `01` + date-suffix
-  yields e.g. `name012024-05-01`. If a nicer result is wanted, the user combines with **Add**
-  (e.g. an `-` suffix). *Candidate enhancement for the modern UI: an optional separator.*
+- **No separator between a name and an appended number — PRESERVED (faithful).** The
+  original appends/prepends the value directly, so `name` + number-suffix `01` yields
+  `name01`. If a nicer result is wanted, the user combines with **Add** (e.g. an `-` suffix).
+- **Optional name separator for Date — ADDED.** The original concatenated the date directly
+  (`name2024-05-01`); this rebuild adds an *optional* `name_separator` (default empty = the
+  faithful direct concatenation). When set, it goes between the date and the name text on each
+  side that exists (`photo-2024-05-01`, `2024-05-01-photo`), never leaving a dangling
+  separator at an edge or against an empty base.
 - **Invalid regex is a no-op** (does not crash the live preview) — a deliberate safety choice.
 - **Empty Replace search is a no-op** (a deliberate safety choice). `str.replace("", x)` would
   otherwise insert the replacement between every character and mangle names on disk.

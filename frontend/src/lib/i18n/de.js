@@ -107,8 +107,10 @@ export const de = {
 
   // date modifier (format options DD-MM-YYYY etc. are codes, not translated)
   "date.title": "Datum",
-  "date.separator": "Trennzeichen",
+  "date.separator": "Datums-Trennzeichen",
   "date.sepTitle": "Zeichen zwischen Tag, Monat und Jahr",
+  "date.nameSeparator": "Namens-Trennzeichen",
+  "date.nameSepTitle": "Zeichen zwischen Datum und Rest des Namens (leer = keines)",
   "date.created": "Erstellt",
   "date.modified": "Zuletzt geändert",
   "date.today": "Heute",

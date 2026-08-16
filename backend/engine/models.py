@@ -147,7 +147,8 @@ class DateConfig:
 
     enabled: bool = False
     format: str = "ymd"               # "dmy" | "ymd" | "mdy"
-    separator: str = "-"
+    separator: str = "-"              # between day/month/year inside the date
+    name_separator: str = ""          # between the date and the rest of the name ("" = none, faithful to original)
     source: str = "today"             # "created" | "modified" | "today" | "custom"
     custom_date: Optional[date] = None  # used only when source == "custom"
     position: str = "suffix"          # "prefix" | "suffix" | "insert"
