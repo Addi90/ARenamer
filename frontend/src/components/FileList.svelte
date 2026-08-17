@@ -18,62 +18,74 @@
   }
 </script>
 
-<div class="toolbar">
-  <button onclick={selectAll}>{t("fileList.selectAll")}</button>
-  <button onclick={clearSelection} disabled={state.selection.length === 0}>{t("fileList.clear")}</button>
-  <span class="spacer"></span>
-  {@render actions?.()}
+<div class="filelist">
+  <div class="toolbar">
+    <button onclick={selectAll}>{t("fileList.selectAll")}</button>
+    <button onclick={clearSelection} disabled={state.selection.length === 0}>{t("fileList.clear")}</button>
+    <span class="spacer"></span>
+    {@render actions?.()}
+  </div>
+
+  <div class="table-wrap" class:empty={state.files.length === 0}>
+    <table class="files">
+      <thead>
+        <tr>
+          <th class="col-check">
+            <input type="checkbox" aria-label={t("fileList.selectAll")} checked={allSelected} onchange={onHeaderToggle} />
+          </th>
+          <th class="col-name">{t("fileList.name")}</th>
+          <th class="col-new">{t("fileList.newName")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {#each state.files as file (file.name)}
+          {@const selected = state.selection.includes(file.name)}
+          {@const prev = state.previews[file.name]}
+          {@const duplicate = state.duplicateNames.includes(file.name)}
+          <tr class:selected={selected} class:duplicate={duplicate} onclick={() => toggleSelect(file.name)}>
+            <td class="col-check">
+              <input type="checkbox" checked={selected} onclick={onCheckboxClick} onchange={() => toggleSelect(file.name)} />
+            </td>
+            <td class="col-name" title={file.name}>{file.name}</td>
+            <td class="col-new" class:changed={prev?.changed} class:muted={!selected} title={prev ? prev.full_new_name : file.name}>
+              {prev ? prev.full_new_name : file.name}{duplicate ? " ⚠" : ""}
+            </td>
+          </tr>
+        {/each}
+        {#if state.files.length === 0}
+          <tr class="empty">
+            <td colspan="3">{state.busy ? t("common.loading") : t("fileList.empty")}</td>
+          </tr>
+        {/if}
+      </tbody>
+    </table>
+  </div>
 </div>
 
-<table class="files">
-  <thead>
-    <tr>
-      <th class="col-check">
-        <input type="checkbox" aria-label={t("fileList.selectAll")} checked={allSelected} onchange={onHeaderToggle} />
-      </th>
-      <th class="col-name">{t("fileList.name")}</th>
-      <th class="col-new">{t("fileList.newName")}</th>
-    </tr>
-  </thead>
-  <tbody>
-    {#each state.files as file (file.name)}
-      {@const selected = state.selection.includes(file.name)}
-      {@const prev = state.previews[file.name]}
-      {@const duplicate = state.duplicateNames.includes(file.name)}
-      <tr class:selected={selected} class:duplicate={duplicate} onclick={() => toggleSelect(file.name)}>
-        <td class="col-check">
-          <input type="checkbox" checked={selected} onclick={onCheckboxClick} onchange={() => toggleSelect(file.name)} />
-        </td>
-        <td class="col-name" title={file.name}>{file.name}</td>
-        <td class="col-new" class:changed={prev?.changed} class:muted={!selected} title={prev ? prev.full_new_name : file.name}>
-          {prev ? prev.full_new_name : file.name}{duplicate ? " ⚠" : ""}
-        </td>
-      </tr>
-    {/each}
-    {#if state.files.length === 0}
-      <tr class="empty">
-        <td colspan="3">{state.busy ? t("common.loading") : t("fileList.empty")}</td>
-      </tr>
-    {/if}
-  </tbody>
-</table>
-
 <style>
+  /* Fills the center column of App's three-pane layout; the table scrolls inside. */
+  .filelist { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+
   .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
   .toolbar button { padding: 6px 12px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
   .toolbar button:hover:not(:disabled) { background: #f3f4f6; }
   .toolbar button:disabled { opacity: 0.5; cursor: not-allowed; }
   .spacer { flex: 1; }
 
+  .table-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+  }
+  .table-wrap.empty { min-height: 0; }
   .files {
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
     font-size: 0.9rem;
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    overflow: hidden;
   }
   thead th {
     text-align: left;
@@ -95,6 +107,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  tbody tr:last-child td { border-bottom: none; }
   tbody tr { cursor: pointer; }
   tbody tr:hover { background: #f5f8ff; }
   tr.selected { background: #eef4ff; }
@@ -113,5 +126,12 @@
     color: #9aa0ab;
     padding: 24px;
     cursor: default;
+  }
+
+  /* Stacked (narrow) layout: no definite parent height, so cap the table and let
+     the page scroll instead. */
+  @media (max-width: 980px) {
+    .filelist { height: auto; }
+    .table-wrap { max-height: calc(100vh - 260px); min-height: 240px; }
   }
 </style>

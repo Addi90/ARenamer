@@ -11,11 +11,21 @@ Usage:
 
 from __future__ import annotations
 
+import socket
 import sys
 
 
+def _free_port() -> int:
+    """Ask the OS for a free TCP port on localhost (avoids clashing with :8000)."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    return port
+
+
 def main() -> int:
-    host, port = "127.0.0.1", 8000
+    host, port = "127.0.0.1", _free_port()
 
     try:
         import webview  # noqa: F401  (availability check)

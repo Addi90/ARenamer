@@ -21,6 +21,9 @@ export const de = {
   "common.caseSensitive": "Groß-/Kleinschr. beachten",
   "common.pos": "Pos.",
 
+  // modifiers sidebar
+  "modifiers.title": "Modifikatoren",
+
   // file list
   "fileList.selectAll": "Alle auswählen",
   "fileList.clear": "Auswahl aufheben",

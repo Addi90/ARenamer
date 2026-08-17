@@ -87,12 +87,17 @@
       <DirectoryTree />
     </aside>
     <div class="content">
-      <FileList>
-        <RenameButton slot="actions" />
-      </FileList>
-
-      <!-- Panels are rendered in pipeline order (Replace → If-Then → Remove → Add →
-           Counting → Date) so the composition order is visible to the user. -->
+      {#snippet actions()}
+        <RenameButton />
+      {/snippet}
+      <FileList {actions} />
+    </div>
+    <!-- Panels are rendered in pipeline order (Replace → If-Then → Remove → Add →
+         Counting → Date) so the composition order is visible to the user. They live
+         in a right-hand sidebar (scrollable) so they're always visible without page
+         scrolling — like the original desktop app, but side-by-side. -->
+    <aside class="modifiers-pane">
+      <h2>{t("modifiers.title")}</h2>
       <section class="modifiers">
         <ReplaceModifier />
         <IfThenModifier />
@@ -101,7 +106,7 @@
         <CountingModifier />
         <DateModifier />
       </section>
-    </div>
+    </aside>
   </div>
 
   <Dialog />
@@ -109,9 +114,16 @@
 
 <style>
   .shell {
-    max-width: 1100px;
-    margin: 24px auto;
-    padding: 0 20px;
+    /* Full-viewport app frame: the page itself never scrolls; each pane below
+       scrolls internally (native-app feel). */
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    margin: 0;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     color: #1f2430;
   }
@@ -131,10 +143,30 @@
 
   .error { margin-bottom: 12px; padding: 8px 12px; border-radius: 6px; background: #fdecec; color: #7f1d1d; font-size: 0.85rem; }
 
-  .main { display: flex; gap: 16px; align-items: flex-start; }
-  .tree-pane { flex: 0 0 30%; max-width: 320px; }
-  .tree-pane :global(.tree) { max-height: calc(100vh - 260px); min-height: 240px; }
-  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+  .main { flex: 1; min-height: 0; display: flex; gap: 16px; align-items: stretch; }
+  .tree-pane { flex: 0 0 240px; min-width: 0; display: flex; flex-direction: column; }
+  .tree-pane :global(.tree) { flex: 1; min-height: 0; }
+  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
-  .modifiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 12px; }
+  .modifiers-pane {
+    flex: 0 0 350px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .modifiers-pane h2 { margin: 0 0 8px; font-size: 0.95rem; color: #374151; }
+  .modifiers { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+
+  /* Narrow screens (phones / small browser windows): fall back to the stacked
+     layout and let the page scroll, since three columns can't fit. */
+  @media (max-width: 980px) {
+    .shell { height: auto; min-height: 100vh; overflow: visible; }
+    .main { flex-direction: column; align-items: stretch; }
+    .tree-pane { flex: none; width: 100%; max-height: 260px; }
+    .tree-pane :global(.tree) { flex: none; max-height: 240px; }
+    .content { width: 100%; flex: none; }
+    .modifiers-pane { flex: none; width: 100%; overflow: visible; }
+    .modifiers { flex: none; overflow: visible; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 1fr), 1fr)); }
+  }
 </style>

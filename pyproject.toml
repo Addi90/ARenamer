@@ -1,0 +1,31 @@
+# Project metadata for the A-Renamer Tool.
+#
+# This is the single source of truth for the app name and version; the PyInstaller
+# spec (build/arenamer.spec) reads them from here so they stay in sync. It also
+# makes the project pip-installable for development:
+#     pip install -e .        # then run `arenamer` (or `python run.py`)
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arenamer"
+version = "0.1.0"
+description = "A-Renamer Tool - bulk file renamer with composable text modifiers (Python + Svelte rebuild)"
+readme = "AGENTS.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pywebview>=5.0",
+]
+
+[project.scripts]
+arenamer = "run:main"
+
+[tool.setuptools]
+py-modules = ["run"]
+
+[tool.setuptools.packages.find]
+include = ["backend*"]

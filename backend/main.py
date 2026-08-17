@@ -13,6 +13,7 @@ Run as a desktop window (opens pywebview):
 from __future__ import annotations
 
 import os
+import sys
 import threading
 import time
 
@@ -22,8 +23,19 @@ from fastapi.staticfiles import StaticFiles
 
 from .api import api_router
 
+def _base_dir() -> str:
+    """Directory that holds the app's bundled data files.
+
+    When frozen by PyInstaller, bundled data lives under ``sys._MEIPASS``; in a
+    normal source checkout it is this file's own directory.
+    """
+    if getattr(sys, "frozen", False):
+        return sys._MEIPASS  # type: ignore[attr-defined]
+    return os.path.dirname(os.path.abspath(__file__))
+
+
 # Directory that holds the built Svelte assets (frontend `npm run build` output).
-BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = _base_dir()
 STATIC_DIR = os.path.join(BACKEND_DIR, "static")
 
 
@@ -78,7 +90,9 @@ def start_desktop(host: str = "127.0.0.1", port: int = 8000) -> None:
 
     import webview
 
-    window = webview.create_window("A-Renamer Tool", url, width=1024, height=768)
+    # Sized so all three panes (tree | file list | modifiers) are visible at once;
+    # each pane scrolls internally, so smaller screens still work.
+    window = webview.create_window("A-Renamer Tool", url, width=1360, height=900)
     webview.start()
 
     # Clean shutdown: stop the server when the window closes.

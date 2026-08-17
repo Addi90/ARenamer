@@ -20,6 +20,9 @@ export const en = {
   "common.caseSensitive": "Case sensitive",
   "common.pos": "Pos.",
 
+  // modifiers sidebar
+  "modifiers.title": "Modifiers",
+
   // file list
   "fileList.selectAll": "Select all",
   "fileList.clear": "Clear",

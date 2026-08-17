@@ -1,0 +1,4 @@
+# Build-time dependencies for packaging the desktop app with PyInstaller.
+# Install into your venv before running `python build/build.py`:
+#     pip install -r requirements-build.txt
+pyinstaller>=6.0

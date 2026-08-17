@@ -1,0 +1,15 @@
+/* Global reset for the full-viewport app frame (App.svelte owns the layout). */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Subtle backdrop so the white panes read as distinct surfaces. */
+body {
+  background: #eef1f5;
+}

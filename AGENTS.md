@@ -190,12 +190,14 @@ dialog → `/rename`.
   original's `QLocale::system()`: a saved user choice (localStorage) wins, otherwise
   `navigator.language` (`de*` → German). All UI strings go through `t()`; backend error
   messages stay English (technical, not user-facing copy).
-- **`components/FileList.svelte`** — Name + New Name preview table, multi-select (row/checkbox
-  click toggles; header checkbox selects all), a Select-all/Clear toolbar, and red highlighting
-  of rows that would clobber an existing file. **`components/modifiers/`** — all six panels
-  (Replace, If-Then, Remove, Add, Counting/Number, Date), each a self-contained section with
-  an enable toggle + ✓/✗ indicator and controls greyed out when disabled; panels are rendered
-  in `App.svelte` in pipeline order (§2) on a responsive grid.
+  - **`components/FileList.svelte`** — Name + New Name preview table, multi-select (row/checkbox
+    click toggles; header checkbox selects all), a Select-all/Clear toolbar, and red highlighting
+    of rows that would clobber an existing file. The table fills the center column and scrolls
+    internally (sticky header); `table-layout: fixed` + ellipsis keeps long names from stretching
+    the view. **`components/modifiers/`** — all six panels (Replace, If-Then, Remove, Add,
+    Counting/Number, Date), each a self-contained section with an enable toggle + ✓/✗ indicator
+    and controls greyed out when disabled; panels are rendered in `App.svelte` in pipeline order
+    (§2), stacked vertically in the right-hand sidebar.
 - **`components/DirectoryTree.svelte`** (+ recursive `TreeNode.svelte`) — lazy directory tree
   rooted at home (`/api/dirs` per expansion); clicking a node re-roots the file list.
 - **`components/RenameButton.svelte`** — drives the rename workflow: `/api/check` (blocking
@@ -203,9 +205,11 @@ dialog → `/rename`.
 - **`components/Dialog.svelte`** — reusable modal (warning / confirm / info variants; Esc or
   backdrop click dismisses). Rendered once in `App.svelte`; driven by the store's `dialog` state.
 - **`App.svelte`** — composes the header (title + language switcher), the path bar
-  (Home / Up / Open), a two-column layout (directory tree | file list) and the modifier
-  panels; a debounced `$effect` re-runs `/api/preview` whenever config, selection or
-  directory changes (live preview).
+  (Home / Up / Open) and a full-viewport three-pane layout: directory tree | file list
+  | modifier sidebar. The page itself never scrolls — each pane scrolls internally
+  (native-app feel); below ~980px it falls back to a stacked, page-scrolling layout.
+  A debounced `$effect` re-runs `/api/preview` whenever config, selection or directory
+  changes (live preview).
 
 > **Preview shows the full name** (`base + extension`), a deliberate *fix* of the original's
 > base-only preview column (see §4): it is more useful and unambiguous. The engine still returns
@@ -236,6 +240,39 @@ npm run build                           # emits to ../backend/static for the des
 
 For a full desktop run: start the backend (`python run.py` or `uvicorn backend.main:app`)
 and either open http://127.0.0.1:8000 (after `npm run build`) or use the Vite dev server.
+
+### Packaging (distributable desktop app)
+
+The app is a pywebview window around the Svelte SPA + in-process FastAPI server. To ship it
+without requiring Python, `build/build.py` bundles everything with PyInstaller:
+
+```sh
+pip install -r requirements-build.txt   # pyinstaller (add to your venv)
+python build/build.py                   # frontend -> PyInstaller -> versioned archive in dist/
+```
+
+`build/build.py` is a single cross-platform orchestrator (no shell differences). It builds the
+frontend, runs `build/arenamer.spec`, then packages the result. Because **PyInstaller cannot
+cross-compile, run it on each target OS** to get that OS's artifact:
+
+| OS | Artifact in `dist/` | pywebview driver | End-user system requirement |
+|----|---------------------|------------------|------------------------------|
+| macOS | `A-Renamer.app` + `-macOS.zip` | `cocoa` (WKWebView) | none (system WebKit); unsigned → right-click→Open past Gatekeeper |
+| Windows | `A-Renamer/` + `-win64.zip` | `edgechromium` (WebView2) | Edge WebView2 Runtime (preinstalled on Win10/11) |
+| Linux | `A-Renamer/` + `-linux.tar.gz` | `gtk` (WebKit2GTK) | `libwebkit2gtk-4.x` system libs |
+
+Packaging internals:
+- **`build/arenamer.spec`** — the PyInstaller spec (one-folder bundle; a `.app` on macOS).
+  Reads name/version from `pyproject.toml`. Set its top-level `CONSOLE = False` for release
+  builds (no console window on Windows).
+- **`build/_bundle.py`** — shared dependency collection: pywebview's JS bridge, uvicorn's
+  dynamic loop modules, and (macOS only) the PyObjC frameworks behind WKWebView.
+- **`build/_smoke.py`** + `build/smoke.spec` — a headless frozen-bundle test (imports the full
+  stack, serves `/api/health` + `/`, exits). Useful to validate a build on an OS where you can't
+  easily see the window: `python -m PyInstaller build/smoke.spec && dist/arenamer-smoke`.
+
+The frozen app resolves its bundled SPA via `backend/main.py:_base_dir()` (uses `sys._MEIPASS`
+when frozen), and picks a free localhost port in `run.py` so instances don't clash.
 
 ---
 
