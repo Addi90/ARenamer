@@ -136,5 +136,5 @@
   .tree-pane :global(.tree) { max-height: calc(100vh - 260px); min-height: 240px; }
   .content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 
-  .modifiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+  .modifiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 12px; }
 </style>

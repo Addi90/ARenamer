@@ -45,7 +45,7 @@
           <input type="checkbox" checked={selected} onclick={onCheckboxClick} onchange={() => toggleSelect(file.name)} />
         </td>
         <td class="col-name" title={file.name}>{file.name}</td>
-        <td class="col-new" class:changed={prev?.changed} class:muted={!selected}>
+        <td class="col-new" class:changed={prev?.changed} class:muted={!selected} title={prev ? prev.full_new_name : file.name}>
           {prev ? prev.full_new_name : file.name}{duplicate ? " ⚠" : ""}
         </td>
       </tr>
@@ -67,6 +67,7 @@
 
   .files {
     width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
     font-size: 0.9rem;
     background: #fff;
@@ -76,6 +77,9 @@
   }
   thead th {
     text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-weight: 600;
     color: #374151;
     background: #f9fafb;
@@ -88,6 +92,8 @@
     padding: 6px 12px;
     border-bottom: 1px solid #f1f3f5;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   tbody tr { cursor: pointer; }
   tbody tr:hover { background: #f5f8ff; }
