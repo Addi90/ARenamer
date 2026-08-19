@@ -6,13 +6,14 @@
 #     pip install -e .        # then run `arenamer` (or `python run.py`)
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "arenamer"
 version = "0.1.0"
 description = "A-Renamer Tool - bulk file renamer with composable text modifiers (Python + Svelte rebuild)"
+license = "GPL-3.0-only"
 readme = "AGENTS.md"
 requires-python = ">=3.10"
 dependencies = [

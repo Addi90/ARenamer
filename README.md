@@ -71,6 +71,12 @@ arenamer/
 
 See [AGENTS.md](AGENTS.md) for the full feature checklist, behavior decisions vs. the original, and architecture details.
 
+## License
+
+Copyright (C) 2026 Adrian Crombach
+
+This project is licensed under the [GNU General Public License v3](LICENSE) — improvements and redistributed versions must stay open source under the same license.
+
 ---
 
 *This project was entirely ported from Qt/C++ by Qwen 3.8 27B running locally.*
