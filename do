@@ -14,6 +14,13 @@ Commands:
         (Re)write changelog.md sections for all existing version tags that
         do not have a section yet. Does not change the version or tag.
 
+    do build [--no-frontend]
+        Build the desktop app for the current OS (frontend -> PyInstaller ->
+        versioned archive in dist/), using the project virtualenv.
+
+    do test
+        Run the pytest suite (engine + API) with the project virtualenv.
+
 The version in pyproject.toml is the single source of truth (build/build.py
 reads it); tags are named v<version>. Run with the repo's virtualenv active
 is not required - this script only uses the Python standard library.
@@ -255,6 +262,32 @@ def cmd_changelog(_args: argparse.Namespace) -> None:
     write_changelog(preamble.rstrip() + "\n\n" + "\n".join(text for _, text in sections))
 
 
+def venv_python() -> str:
+    """Prefer the project virtualenv's interpreter (has PyInstaller + deps)."""
+    for name in (".venv", "venv"):
+        for binname in ("bin/python", "Scripts/python.exe"):
+            p = os.path.join(REPO_ROOT, name, binname)
+            if os.path.isfile(p):
+                return p
+    return sys.executable
+
+
+def cmd_build(args: argparse.Namespace) -> None:
+    """Build the desktop app: frontend -> PyInstaller -> versioned archive in dist/."""
+    py = venv_python()
+    cmd = [py, os.path.join(REPO_ROOT, "build", "build.py")]
+    if args.no_frontend:
+        cmd.append("--no-frontend")
+    print(f"building with {py}")
+    subprocess.run(cmd, cwd=REPO_ROOT, check=True)
+
+
+def cmd_test(_args: argparse.Namespace) -> None:
+    """Run the test suite (engine + API) with pytest."""
+    py = venv_python()
+    subprocess.run([py, "-m", "pytest", "tests/", "-v"], cwd=REPO_ROOT, check=True)
+
+
 def main() -> None:
     p = argparse.ArgumentParser(prog="do", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
@@ -265,6 +298,11 @@ def main() -> None:
     pb.set_defaults(func=cmd_bump)
     pc = sub.add_parser("changelog", help="backfill changelog.md sections for existing tags")
     pc.set_defaults(func=cmd_changelog)
+    pbd = sub.add_parser("build", help="build the desktop app (frontend + PyInstaller + archive)")
+    pbd.add_argument("--no-frontend", action="store_true", help="reuse an existing backend/static")
+    pbd.set_defaults(func=cmd_build)
+    pt = sub.add_parser("test", help="run the pytest suite (engine + API)")
+    pt.set_defaults(func=cmd_test)
     args = p.parse_args()
     args.func(args)
 
