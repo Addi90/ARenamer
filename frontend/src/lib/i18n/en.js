@@ -58,6 +58,14 @@ export const en = {
   "replace.searchPh": "e.g. _old",
   "replace.replacePh": "e.g. _new",
 
+  // case modifier
+  "case.title": "Case",
+  "case.mode": "Mode",
+  "case.upper": "UPPERCASE",
+  "case.lower": "lowercase",
+  "case.titleCase": "Title Case",
+  "case.sentenceCase": "Sentence case",
+
   // if-then modifier
   "ifthen.title": "If-Then",
   "ifthen.ifTag": "If",

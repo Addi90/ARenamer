@@ -59,6 +59,14 @@ export const de = {
   "replace.searchPh": "z. B. _old",
   "replace.replacePh": "z. B. _new",
 
+  // case modifier
+  "case.title": "Groß-/Kleinschreibung",
+  "case.mode": "Modus",
+  "case.upper": "GROSSBUCHSTABEN",
+  "case.lower": "kleinschreibung",
+  "case.titleCase": "Titel-Großschreibung",
+  "case.sentenceCase": "Satz-Großschreibung",
+
   // if-then modifier
   "ifthen.title": "Wenn-Dann",
   "ifthen.ifTag": "WENN",
