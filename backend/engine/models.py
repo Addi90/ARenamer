@@ -73,7 +73,7 @@ class RenameFile:
 
 # --------------------------------------------------------------------------- #
 # Modifier configuration objects. Each has an `enabled` flag + its parameters,
-# matching the six modifiers documented in AGENTS.md section 5.
+# matching the seven modifiers documented in AGENTS.md section 5.
 # --------------------------------------------------------------------------- #
 
 
@@ -115,6 +115,14 @@ class ReplaceConfig:
     replace: str = ""
     regex: bool = False
     case_sensitive: bool = False
+
+
+@dataclass
+class CaseConfig:
+    """Case modifier: letter case of the base name (upper/lower/title/sentence)."""
+
+    enabled: bool = False
+    mode: str = "upper"               # "upper" | "lower" | "title" | "sentence"
 
 
 @dataclass
@@ -162,6 +170,7 @@ class Config:
     add: AddConfig = field(default_factory=AddConfig)
     ifthen: IfThenConfig = field(default_factory=IfThenConfig)
     replace: ReplaceConfig = field(default_factory=ReplaceConfig)
+    case: CaseConfig = field(default_factory=CaseConfig)
     remove: RemoveConfig = field(default_factory=RemoveConfig)
     counting: CountingConfig = field(default_factory=CountingConfig)
     date: DateConfig = field(default_factory=DateConfig)
@@ -205,6 +214,7 @@ class Config:
             add=_build(AddConfig, "add"),
             ifthen=_build(IfThenConfig, "ifthen"),
             replace=_build(ReplaceConfig, "replace"),
+            case=_build(CaseConfig, "case"),
             remove=_build(RemoveConfig, "remove"),
             counting=_build(CountingConfig, "counting"),
             date=date_cfg,

@@ -20,6 +20,7 @@ from backend.engine import (
 )
 from backend.engine.models import (
     AddConfig,
+    CaseConfig,
     CountingConfig,
     DateConfig,
     IfThenConfig,
@@ -197,6 +198,54 @@ class TestReplace:
         f = one("abc")
         compute([f], Config(replace=ReplaceConfig(enabled=True, search="", replace="X", regex=True)))
         assert f.new_base == "abc"
+
+
+# --------------------------------------------------------------------------- #
+# Case modifier
+# --------------------------------------------------------------------------- #
+
+class TestCase:
+    def test_upper(self):
+        f = one("hello World")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="upper")))
+        assert f.new_base == "HELLO WORLD"
+
+    def test_lower(self):
+        f = one("Hello WORLD")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="lower")))
+        assert f.new_base == "hello world"
+
+    def test_title(self):
+        f = one("hello world")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="title")))
+        assert f.new_base == "Hello World"
+
+    def test_title_apostrophe_quirk(self):
+        # str.title capitalizes after apostrophes: "it's" -> "It'S"
+        f = one("it's here")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="title")))
+        assert f.new_base == "It'S Here"
+
+    def test_sentence(self):
+        f = one("hELLO wORLD")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="sentence")))
+        assert f.new_base == "Hello world"
+
+    def test_disabled_is_noop(self):
+        f = one("hello")
+        compute([f], Config(case=CaseConfig(enabled=False, mode="upper")))
+        assert f.new_base == "hello"
+
+    def test_extension_untouched(self):
+        f = one("photo.JPG")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="lower")))
+        assert f.new_base == "photo"
+        assert f.new_full_name == "photo.JPG"
+
+    def test_unknown_mode_falls_back_to_upper(self):
+        f = one("hello")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="bogus")))
+        assert f.new_base == "HELLO"
 
 
 # --------------------------------------------------------------------------- #
@@ -408,20 +457,33 @@ class TestPipelineOrder:
         compute([f], cfg)
         assert f.new_base == "name1"
 
-    def test_full_sequence(self):
-        # Replace -> If-Then -> Remove -> Add -> Counting -> Date
+    def test_case_between_replace_and_ifthen(self):
+        # Replace -> Case -> If-Then: case transforms the replaced text, and the
+        # If-Then condition still tests the ORIGINAL base name.
         f = one("IMG_final 01.jpg")  # base "IMG_final 01"
         cfg = Config(
             replace=ReplaceConfig(enabled=True, search="IMG", replace="img"),   # -> "img_final 01"
-            ifthen=IfThenConfig(enabled=True, expression="final", action="suffix", string="_v2"),  # cond on original base; -> "img_final 01_v2"
-            remove=RemoveConfig(enabled=True, front=8),                          # drop 8 chars "img_fina" -> "l 01_v2"
-            add=AddConfig(enabled=True, suffix="!"),                             # -> "l 01_v2!"
-            counting=CountingConfig(enabled=True, position="prefix", start=1),   # -> "1l 01_v2!"
+            case=CaseConfig(enabled=True, mode="upper"),                        # -> "IMG_FINAL 01"
+            ifthen=IfThenConfig(enabled=True, expression="final", action="suffix", string="_v2"),  # cond on original base -> "IMG_FINAL 01_v2"
+        )
+        compute([f], cfg)
+        assert f.new_base == "IMG_FINAL 01_v2"
+
+    def test_full_sequence(self):
+        # Replace -> Case -> If-Then -> Remove -> Add -> Counting -> Date
+        f = one("IMG_final 01.jpg")  # base "IMG_final 01"
+        cfg = Config(
+            replace=ReplaceConfig(enabled=True, search="IMG", replace="img"),   # -> "img_final 01"
+            case=CaseConfig(enabled=True, mode="upper"),                        # -> "IMG_FINAL 01"
+            ifthen=IfThenConfig(enabled=True, expression="final", action="suffix", string="_v2"),  # cond on original base; -> "IMG_FINAL 01_v2"
+            remove=RemoveConfig(enabled=True, front=8),                          # drop 8 chars "IMG_FINA" -> "L 01_v2"
+            add=AddConfig(enabled=True, suffix="!"),                             # -> "L 01_v2!"
+            counting=CountingConfig(enabled=True, position="prefix", start=1),   # -> "1L 01_v2!"
             date=DateConfig(enabled=True, source="custom", custom_date=date(2024, 5, 1), format="ymd"),
         )
         compute([f], cfg)
-        # date appends directly (no separator): "1l 01_v2!" + "2024-05-01"
-        assert f.new_base == "1l 01_v2!2024-05-01"
+        # date appends directly (no separator): "1L 01_v2!" + "2024-05-01"
+        assert f.new_base == "1L 01_v2!2024-05-01"
 
     def test_is_idempotent_across_calls(self):
         # same inputs -> same outputs no matter how many times we run it
