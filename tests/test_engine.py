@@ -247,6 +247,53 @@ class TestCase:
         compute([f], Config(case=CaseConfig(enabled=True, mode="bogus")))
         assert f.new_base == "HELLO"
 
+    # word modes: mixed input with camelCase boundaries + all three delimiters
+    def test_camel(self):
+        f = one("helloWorld_foo-bar baz")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="camel")))
+        assert f.new_base == "helloWorldFooBarBaz"
+
+    def test_pascal(self):
+        f = one("helloWorld_foo-bar baz")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="pascal")))
+        assert f.new_base == "HelloWorldFooBarBaz"
+
+    def test_snake(self):
+        f = one("helloWorld_foo-bar baz")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="snake")))
+        assert f.new_base == "hello_world_foo_bar_baz"
+
+    def test_kebab(self):
+        f = one("helloWorld_foo-bar baz")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="kebab")))
+        assert f.new_base == "hello-world-foo-bar-baz"
+
+    def test_constant(self):
+        f = one("helloWorld_foo-bar baz")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="constant")))
+        assert f.new_base == "HELLO_WORLD_FOO_BAR_BAZ"
+
+    def test_train(self):
+        f = one("helloWorld_foo-bar baz")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="train")))
+        assert f.new_base == "hello world foo bar baz"
+
+    def test_digits_attach_to_preceding_word(self):
+        f = one("file2x")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="snake")))
+        assert f.new_base == "file2x"
+
+    def test_acronym_naive_split(self):
+        # every uppercase starts a new word: X, M, L, Http, Request
+        f = one("XMLHttpRequest")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="snake")))
+        assert f.new_base == "x_m_l_http_request"
+
+    def test_word_mode_empty_base(self):
+        f = one(".bashrc")  # leading-dot name -> empty base
+        compute([f], Config(case=CaseConfig(enabled=True, mode="snake")))
+        assert f.new_base == ""
+
 
 # --------------------------------------------------------------------------- #
 # Counting / Number modifier (5e)
