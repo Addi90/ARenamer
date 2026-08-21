@@ -22,6 +22,12 @@
           <option value="lower">{t("case.lower")}</option>
           <option value="title">{t("case.titleCase")}</option>
           <option value="sentence">{t("case.sentenceCase")}</option>
+          <option value="camel">{t("case.camel")}</option>
+          <option value="pascal">{t("case.pascal")}</option>
+          <option value="snake">{t("case.snake")}</option>
+          <option value="kebab">{t("case.kebab")}</option>
+          <option value="constant">{t("case.constant")}</option>
+          <option value="train">{t("case.train")}</option>
         </select>
       </label>
     </div>

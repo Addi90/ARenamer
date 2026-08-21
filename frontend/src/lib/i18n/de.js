@@ -66,6 +66,12 @@ export const de = {
   "case.lower": "kleinschreibung",
   "case.titleCase": "Titel-Großschreibung",
   "case.sentenceCase": "Satz-Großschreibung",
+  "case.camel": "camelCase",
+  "case.pascal": "PascalCase",
+  "case.snake": "snake_case",
+  "case.kebab": "kebab-case",
+  "case.constant": "CONSTANT_CASE",
+  "case.train": "train case",
 
   // if-then modifier
   "ifthen.title": "Wenn-Dann",

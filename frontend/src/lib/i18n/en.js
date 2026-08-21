@@ -65,6 +65,12 @@ export const en = {
   "case.lower": "lowercase",
   "case.titleCase": "Title Case",
   "case.sentenceCase": "Sentence case",
+  "case.camel": "camelCase",
+  "case.pascal": "PascalCase",
+  "case.snake": "snake_case",
+  "case.kebab": "kebab-case",
+  "case.constant": "CONSTANT_CASE",
+  "case.train": "train case",
 
   // if-then modifier
   "ifthen.title": "If-Then",

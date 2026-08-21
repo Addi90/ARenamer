@@ -9,7 +9,7 @@ The user has various ways of adding, removing and replacing content in a filenam
 - **Add / Insert** — prefix, suffix, and insert-at-position
 - **If-Then** — condition (contains / contains-not, plain or regex) → append / prepend / insert
 - **Replace** — a sequence of characters or a regular expression (all occurrences)
-- **Case** — change letter case (UPPERCASE, lowercase, Title Case, Sentence case)
+- **Case** — change letter case (UPPERCASE, lowercase, Title Case, Sentence case, camelCase, PascalCase, snake_case, kebab-case, CONSTANT_CASE, train case)
 - **Remove** — any number of characters from the front, back, or a given position range
 - **Date** — add a date (created, last modified, today, or custom) in several formats
 - **Counting** — add a running number (start value, zero-padding) in list order

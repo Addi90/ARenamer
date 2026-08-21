@@ -72,7 +72,7 @@ already implemented and tested (Milestone 2); the UI wiring lands in later miles
 - **Add / Insert** — prefix, suffix, and insert-at-position. (Insert applies first, then the name is wrapped `prefix + name + suffix`.)
 - **If-Then** — condition (CONTAINS / CONTAINS-NOT, plain or regex, case option) evaluated against the file's *original* base name → consequence (add as PREFIX / INSERT-at-pos / SUFFIX).
 - **Replace** — search (plain or regex, case option) → replacement; replaces all occurrences.
-- **Case** — letter case of the base name: UPPERCASE / lowercase / Title Case / Sentence case.
+- **Case** — letter case of the base name: UPPERCASE / lowercase / Title Case / Sentence case, plus word cases (camelCase, PascalCase, snake_case, kebab-case, CONSTANT_CASE, train case) that split the name on delimiters and camelCase boundaries (digits never split; acronyms split naively, one letter per word).
 - **Remove** — first-n chars, last-n chars, and a character range (start–end) with an "until end" option. Ranges that run past a shorter name clamp to the actual end (no out-of-bounds).
 - **Counting / Number** — start number, zero-padding (e.g. `001`), placed as prefix / suffix / insert-at-pos. Numbers follow on-screen list order, not alphabetical.
 - **Date** — format (DD-MM-YYYY / YYYY-MM-DD / MM-DD-YYYY), date separator, optional name separator (between the date and the rest of the name; empty = direct concatenation), source (created / last-modified / today / custom + date picker), placed as prefix / suffix / insert-at-pos.
