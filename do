@@ -2,13 +2,18 @@
 """Release tooling for the A-Renamer Tool.
 
 Commands:
-    do bump [major|minor|patch] [--dry-run] [--no-tag]
+    do bump [major|minor|patch] [--dry-run]
         Decide the semver bump from the commits since the last version tag
         (conventional-commit style: feat -> minor, fix/perf -> patch,
         '!' or BREAKING CHANGE -> major; docs/chore-only still releases a
         patch), update the version in pyproject.toml (and
-        frontend/package.json), prepend a new section to changelog.md,
-        commit both and tag the release as v<version>.
+        frontend/package.json), prepend a new section to changelog.md and
+        commit both. Does NOT tag - run `do tag` on master after merging
+        the release branch.
+
+    do tag
+        Tag the current commit as v<version> using the version from
+        pyproject.toml. Run on master after merging the release branch.
 
     do changelog
         (Re)write changelog.md sections for all existing version tags that
@@ -229,11 +234,19 @@ def cmd_bump(args: argparse.Namespace) -> None:
     if os.path.isfile(PACKAGE_JSON):
         git("add", "frontend/package.json")
     git("commit", "-m", f"chore(release): v{new}")
-    if args.no_tag:
-        print(f"committed release; tag v{new} skipped (--no-tag)")
-    else:
-        git("tag", f"v{new}")
-        print(f"tagged v{new}")
+    print(f"committed release v{new} (no tag - run `do tag` on master after merging the release branch)")
+
+
+def cmd_tag(_args: argparse.Namespace) -> None:
+    branch = git("symbolic-ref", "--short", "HEAD")
+    if branch != "master":
+        sys.exit(f"error: run `do tag` on master (currently on {branch!r}) - the release tag belongs on master after merging the release branch")
+    version = read_version()
+    tag = f"v{version}"
+    if git("tag", "--list", tag):
+        sys.exit(f"error: tag {tag} already exists (move it: `git tag -d {tag}` and re-run)")
+    git("tag", tag)
+    print(f"tagged {tag}")
 
 
 def cmd_changelog(_args: argparse.Namespace) -> None:
@@ -291,11 +304,12 @@ def cmd_test(_args: argparse.Namespace) -> None:
 def main() -> None:
     p = argparse.ArgumentParser(prog="do", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
-    pb = sub.add_parser("bump", help="bump version, write changelog, commit and tag")
+    pb = sub.add_parser("bump", help="bump version, write changelog, commit (no tag)")
     pb.add_argument("level", nargs="?", choices=["major", "minor", "patch"], help="force the bump level")
     pb.add_argument("--dry-run", action="store_true", help="show what would happen, change nothing")
-    pb.add_argument("--no-tag", action="store_true", help="commit the release but skip creating the tag")
     pb.set_defaults(func=cmd_bump)
+    ptg = sub.add_parser("tag", help="tag the current commit as v<version> (run on master after merging the release branch)")
+    ptg.set_defaults(func=cmd_tag)
     pc = sub.add_parser("changelog", help="backfill changelog.md sections for existing tags")
     pc.set_defaults(func=cmd_changelog)
     pbd = sub.add_parser("build", help="build the desktop app (frontend + PyInstaller + archive)")
