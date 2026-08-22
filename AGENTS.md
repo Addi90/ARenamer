@@ -295,3 +295,8 @@ when frozen), and picks a free localhost port in `run.py` so instances don't cla
 - The frontend is a single source of truth in `src/lib/state/`; components read/write the
   store and call `/api/*`. Never let a component compute rename results locally.
 - Preserve the pipeline order (§2) and the behavior decisions in §4 unless explicitly told otherwise.
+- **Never import `state` into a component and write `$state` in it.** Svelte 5 parses
+  `$state` as the *legacy store* auto-subscription (`state.subscribe`) when a `state`
+  binding is in scope, not as the `$state` rune — this crashed every `TreeNode` render
+  (tree pane never appeared). Alias the import (`state as appState`) or use a plain
+  `let` for DOM bindings.
