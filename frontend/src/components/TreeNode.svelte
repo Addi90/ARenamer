@@ -9,6 +9,12 @@
 
   const isCurrent = $derived(state.currentPath === node.path);
 
+  // Keep the current directory visible when the tree re-roots / expands to it.
+  let rowEl = $state.raw(null);
+  $effect(() => {
+    if (isCurrent && rowEl) rowEl.scrollIntoView({ block: "nearest" });
+  });
+
   // Lazy-load children on first expansion (mirrors the original's QFileSystemModel).
   async function loadChildren() {
     if (node.loaded || node.loading) return;
@@ -43,7 +49,7 @@
   }
 </script>
 
-<div class="row" style:padding-left="{depth * 14}px">
+<div class="row" bind:this={rowEl} style:padding-left="{depth * 14}px">
   <button class="twisty" onclick={onTwisty} aria-label={node.expanded ? t("tree.collapse") : t("tree.expand")}>
     {#if node.loading}…{:else if node.expanded}▾{:else if node.loaded}▸{/if}
   </button>

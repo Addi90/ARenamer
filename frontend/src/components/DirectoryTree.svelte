@@ -6,20 +6,91 @@
   import { t } from "../lib/i18n/index.svelte.js";
   import TreeNode from "./TreeNode.svelte";
 
-  // The tree is rooted at the home directory (like the original's QFileSystemModel);
+  // The tree starts rooted at the home directory (like the original's QFileSystemModel);
   // children load lazily per expansion. `root` is a plain node: { name, path, ... }.
+  // When the current directory moves outside the tree (Up / Open dialog), the tree
+  // re-roots at the common ancestor and expands the chain to the current directory.
   let root = $state(null);
 
-  onMount(async () => {
+  function parts(p) {
+    return p.split("/").filter(Boolean);
+  }
+
+  // Longest common directory prefix of two absolute paths (at least "/").
+  function commonAncestor(a, b) {
+    const pa = parts(a);
+    const pb = parts(b);
+    let i = 0;
+    while (i < pa.length && i < pb.length && pa[i] === pb[i]) i++;
+    return "/" + pa.slice(0, i).join("/");
+  }
+
+  async function loadChildren(node) {
+    if (node.loaded || node.loading) return;
+    node.loading = true;
     try {
-      const res = await api.homeDir();
-      root = { name: res.path.split("/").filter(Boolean).pop() || res.path, path: res.path, expanded: true };
-      const dirs = await api.listDirs(res.path);
-      root.children = dirs.dirs.map((d) => ({ name: d.name, path: d.path }));
-      root.loaded = true;
+      const res = await api.listDirs(node.path);
+      node.children = res.dirs.map((d) => ({ name: d.name, path: d.path }));
+      node.loaded = true;
     } catch (e) {
       appState.error = e.message || String(e);
+    } finally {
+      node.loading = false;
     }
+  }
+
+  // Expand the node chain from `node` down to `target` (which must be inside node.path).
+  async function ensureExpandedTo(node, target) {
+    if (node.path === target) {
+      node.expanded = true;
+      return true;
+    }
+    if (!target.startsWith(node.path + "/")) return false;
+    if (!node.loaded) await loadChildren(node);
+    const nextName = target.slice(node.path.length + 1).split("/")[0];
+    const child = (node.children || []).find((c) => c.name === nextName);
+    if (!child) return false;
+    node.expanded = true;
+    return ensureExpandedTo(child, target);
+  }
+
+  async function syncTo(path) {
+    if (!path) return;
+    if (!root) {
+      const res = await api.homeDir();
+      root = {
+        name: res.path.split("/").filter(Boolean).pop() || res.path,
+        path: res.path,
+        expanded: true
+      };
+      await loadChildren(root);
+    }
+    const inside = path === root.path || path.startsWith(root.path + "/");
+    if (!inside) {
+      const ancestor = commonAncestor(root.path, path);
+      if (ancestor !== root.path) {
+        root = { name: parts(ancestor).pop() || ancestor, path: ancestor, expanded: true };
+        await loadChildren(root);
+      }
+    }
+    await ensureExpandedTo(root, path);
+  }
+
+  // Serialize syncs so rapid navigation can't race (each awaits the previous).
+  let pending = Promise.resolve();
+  function requestSync() {
+    pending = pending
+      .then(() => syncTo(appState.currentPath))
+      .catch((e) => {
+        appState.error = e.message || String(e);
+      });
+  }
+
+  onMount(requestSync);
+
+  $effect(() => {
+    appState.currentPath; // track
+    requestSync();
   });
 </script>
 
