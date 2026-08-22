@@ -2,6 +2,34 @@
 
 All notable changes to the A-Renamer Tool are documented in this file.
 
+## [0.2.0] - 2026-08-22
+
+### Features
+- feat: add Case modifier to engine (upper/lower/title/sentence) + tests (a9a2a7e)
+- feat: add Case modifier panel to frontend (select, i18n, pipeline order) (224acdf)
+- feat: extend Case modifier with word cases (camel/pascal/snake/kebab/constant/train) (320a9d6)
+- feat: add word-case options to Case panel (UI + i18n + docs) (323b6cd)
+
+### Bug Fixes
+- fix: re-root directory tree to follow current path (up / open) (e422591)
+- fix: render directory tree (legacy $state store collision in TreeNode) (261c09a)
+- fix: remove double declaration of rowEl (1be79aa)
+
+### Documentation
+- docs: Case modifier in README/AGENTS.md + plan (665845d)
+- docs: add README.md info about dev. setup (9824d3c)
+
+### Build & Packaging
+- build: add release tooling: do bump (semver + changelog + tag) and do changelog backfill (8861ffb)
+- build: add do build and do test commands (venv-aware) (3df793f)
+
+### Chores
+- chore: decouple tagging from `do bump` (new master-only `do tag`) (9b16bc5)
+
+### Other
+- Merge pull request #2 from Addi90/add-upper-lower-case-modifier (4f7d8e9)
+- Merge branch 'fix-directory-tree-view' into develop (e692973)
+
 ## [0.1.0] - 2026-08-19
 
 ### Other
