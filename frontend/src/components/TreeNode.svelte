@@ -20,12 +20,6 @@
     if (isCurrent && rowEl) rowEl.scrollIntoView({ block: "nearest" });
   });
 
-  // Keep the current directory visible when the tree re-roots / expands to it.
-  let rowEl = $state.raw(null);
-  $effect(() => {
-    if (isCurrent && rowEl) rowEl.scrollIntoView({ block: "nearest" });
-  });
-
   // Lazy-load children on first expansion (mirrors the original's QFileSystemModel).
   async function loadChildren() {
     if (node.loaded || node.loading) return;
