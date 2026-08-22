@@ -13,6 +13,7 @@ Public API:
 
 from .models import (
     AddConfig,
+    CaseConfig,
     Config,
     CountingConfig,
     DateConfig,
@@ -35,6 +36,7 @@ __all__ = [
     "Config",
     "RenameFile",
     "AddConfig",
+    "CaseConfig",
     "IfThenConfig",
     "ReplaceConfig",
     "RemoveConfig",

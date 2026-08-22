@@ -41,7 +41,7 @@ When a preview or rename is computed, the engine (`backend/engine/pipeline.py`) 
 2. **Sort** files by list row (deterministic, in-list-order numbering).
 3. Apply each **active** modifier in this fixed order:
 
-   `Replace → If-Then → Remove → Add → Counting → Date`
+   `Replace → Case → If-Then → Remove → Add → Counting → Date`
 
 Each modifier transforms `new_base` in place, feeding the next. **This order is part
 of the contract** and must be preserved (it's locked in by `tests/test_engine.py`).
@@ -68,10 +68,11 @@ already implemented and tested (Milestone 2); the UI wiring lands in later miles
 - Per-file "new name" preview column, updated instantly on any control change.
 - Preview reflects the full modifier pipeline in the correct order (§2).
 
-### Modifiers (all six, each independently toggleable; disabled controls greyed out)
+### Modifiers (all seven, each independently toggleable; disabled controls greyed out)
 - **Add / Insert** — prefix, suffix, and insert-at-position. (Insert applies first, then the name is wrapped `prefix + name + suffix`.)
 - **If-Then** — condition (CONTAINS / CONTAINS-NOT, plain or regex, case option) evaluated against the file's *original* base name → consequence (add as PREFIX / INSERT-at-pos / SUFFIX).
 - **Replace** — search (plain or regex, case option) → replacement; replaces all occurrences.
+- **Case** — letter case of the base name: UPPERCASE / lowercase / Title Case / Sentence case, plus word cases (camelCase, PascalCase, snake_case, kebab-case, CONSTANT_CASE, train case) that split the name on delimiters and camelCase boundaries (digits never split; acronyms split naively, one letter per word).
 - **Remove** — first-n chars, last-n chars, and a character range (start–end) with an "until end" option. Ranges that run past a shorter name clamp to the actual end (no out-of-bounds).
 - **Counting / Number** — start number, zero-padding (e.g. `001`), placed as prefix / suffix / insert-at-pos. Numbers follow on-screen list order, not alphabetical.
 - **Date** — format (DD-MM-YYYY / YYYY-MM-DD / MM-DD-YYYY), date separator, optional name separator (between the date and the rest of the name; empty = direct concatenation), source (created / last-modified / today / custom + date picker), placed as prefix / suffix / insert-at-pos.
@@ -99,6 +100,10 @@ The original had a few quirks. This rebuild makes explicit choices:
 - **If-Then condition uses the original base name — PRESERVED.** The condition is tested
   against the immutable `base`, while the consequence applies to the evolving `new_base`.
 - **Numbering follows list order — PRESERVED.**
+- **Case modifier — ADDED (not in the original).** Placed right after Replace in the
+  pipeline: case is a text transformation like Replace, so text *inserted* later
+  (Add, numbers, dates, If-Then consequences) keeps its own casing. Title Case uses
+  `str.title`, whose apostrophe quirk is documented and preserved (`it's` → `It'S`).
 - **Preview shows the full name** (`base + extension`) in the preview column — FIXED (the
   original showed the base name only). More useful and unambiguous; a display choice only.
 - **No separator between a name and an appended number — PRESERVED (faithful).** The
@@ -128,7 +133,7 @@ arenamer/
 │   ├── engine/                # PURE rename engine (no web deps) — the correctness core
 │   │   ├── models.py          # RenameFile + Config dataclasses (+ JSON (de)serialization)
 │   │   ├── pipeline.py        # compute/preview/find_duplicates/check_duplicates/perform_rename/build_files
-│   │   ├── add.py remove.py replace.py number.py ifthen.py date.py
+│   │   ├── add.py remove.py replace.py case.py number.py ifthen.py date.py
 │   └── static/                # built SPA (gitignored; `npm run build` output)
 ├── frontend/                  # Svelte SPA (Vite)
 │   ├── package.json  vite.config.js  index.html
@@ -140,14 +145,14 @@ arenamer/
 │       ├── lib/i18n/          # en.js + de.js (string tables) and index.svelte.js (language $state, t())
 │       ├── lib/state/         # store.svelte.js — central $state (files, selection, config, previews, dialog)
 │       ├── components/        # FileList, DirectoryTree (+TreeNode), RenameButton, Dialog (done)
-│       └── components/modifiers/  # all six panels: Replace, IfThen, Remove, Add, Counting, Date
+│       └── components/modifiers/  # all seven panels: Replace, Case, IfThen, Remove, Add, Counting, Date
 └── tests/
     ├── test_engine.py         # engine suite (61 tests) — modifiers, pipeline order, edge cases
     └── test_api.py            # API suite (10 tests) — list/dirs/preview/check/rename over HTTP
 ```
 
 ### Engine public API (`backend/engine/__init__.py`)
-- `Config` / `RenameFile` and the six modifier config dataclasses — from `models.py`.
+- `Config` / `RenameFile` and the seven modifier config dataclasses — from `models.py`.
 - `compute(files, config)` — run the full pipeline (mutates each file's `new_base`).
 - `build_files(path, names)` — build `RenameFile` objects (row = list position).
 - `preview(files, config)` — per-file new-name info keyed by original name.
@@ -194,7 +199,7 @@ dialog → `/rename`.
     click toggles; header checkbox selects all), a Select-all/Clear toolbar, and red highlighting
     of rows that would clobber an existing file. The table fills the center column and scrolls
     internally (sticky header); `table-layout: fixed` + ellipsis keeps long names from stretching
-    the view. **`components/modifiers/`** — all six panels (Replace, If-Then, Remove, Add,
+    the view. **`components/modifiers/`** — all seven panels (Replace, Case, If-Then, Remove, Add,
     Counting/Number, Date), each a self-contained section with an enable toggle + ✓/✗ indicator
     and controls greyed out when disabled; panels are rendered in `App.svelte` in pipeline order
     (§2), stacked vertically in the right-hand sidebar.

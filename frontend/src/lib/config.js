@@ -21,6 +21,7 @@ export function defaultConfig() {
       insert_pos: 0,
     },
     replace: { enabled: false, search: "", replace: "", regex: false, case_sensitive: false },
+    case: { enabled: false, mode: "upper" },
     remove: { enabled: false, front: 0, back: 0, range_enabled: false, range_start: 1, range_end: 1, until_end: false },
     counting: { enabled: false, position: "prefix", start: 1, padding: 0, insert_pos: 0 },
     date: { enabled: false, format: "ymd", separator: "-", name_separator: "", source: "today", custom_date: "", position: "suffix", insert_pos: 0 },

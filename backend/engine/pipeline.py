@@ -6,7 +6,7 @@ with the same inputs yield identical results (the original re-ran the whole pipe
 for preview, duplicate-check, and save).
 
 Modifier application order is fixed and part of the contract:
-    Replace -> If-Then -> Remove -> Add -> Counting -> Date
+    Replace -> Case -> If-Then -> Remove -> Add -> Counting -> Date
 
 Only *active* (enabled) modifiers run.
 """
@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import os
 
-from . import add, date, ifthen, number, remove, replace
+from . import add, case, date, ifthen, number, remove, replace
 from .models import Config, RenameFile
 
 
@@ -31,6 +31,8 @@ def compute(files: list[RenameFile], config: Config) -> list[RenameFile]:
     # 3. apply each active modifier in the fixed order
     if config.replace.enabled:
         replace.modify(files, config.replace)
+    if config.case.enabled:
+        case.modify(files, config.case)
     if config.ifthen.enabled:
         ifthen.modify(files, config.ifthen)
     if config.remove.enabled:
