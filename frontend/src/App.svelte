@@ -5,6 +5,7 @@
   import RenameButton from "./components/RenameButton.svelte";
   import Dialog from "./components/Dialog.svelte";
   import ReplaceModifier from "./components/modifiers/ReplaceModifier.svelte";
+  import CaseModifier from "./components/modifiers/CaseModifier.svelte";
   import IfThenModifier from "./components/modifiers/IfThenModifier.svelte";
   import RemoveModifier from "./components/modifiers/RemoveModifier.svelte";
   import AddModifier from "./components/modifiers/AddModifier.svelte";
@@ -92,14 +93,15 @@
       {/snippet}
       <FileList {actions} />
     </div>
-    <!-- Panels are rendered in pipeline order (Replace → If-Then → Remove → Add →
-         Counting → Date) so the composition order is visible to the user. They live
+    <!-- Panels are rendered in pipeline order (Replace → Case → If-Then → Remove →
+         Add → Counting → Date) so the composition order is visible to the user. They live
          in a right-hand sidebar (scrollable) so they're always visible without page
          scrolling — like the original desktop app, but side-by-side. -->
     <aside class="modifiers-pane">
       <h2>{t("modifiers.title")}</h2>
       <section class="modifiers">
         <ReplaceModifier />
+        <CaseModifier />
         <IfThenModifier />
         <RemoveModifier />
         <AddModifier />

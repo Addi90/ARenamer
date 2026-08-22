@@ -1,5 +1,8 @@
 <script>
-  import { state, loadDir } from "../lib/state/store.svelte.js";
+  // Aliased (as in DirectoryTree.svelte): with a `state` binding in scope, Svelte 5
+  // would parse `$state` as the legacy store auto-subscription (`state.subscribe`),
+  // not the `$state` rune.
+  import { state as appState, loadDir } from "../lib/state/store.svelte.js";
   import * as api from "../lib/api.js";
   import { t } from "../lib/i18n/index.svelte.js";
   // Self-import for recursion (the modern replacement for `<svelte:self>`).
@@ -7,7 +10,15 @@
 
   let { node, depth = 0 } = $props();
 
-  const isCurrent = $derived(state.currentPath === node.path);
+  const isCurrent = $derived(appState.currentPath === node.path);
+
+  // Keep the current directory visible when the tree re-roots / expands to it.
+  // A plain `let` (not `$state`): DOM-element bindings don't need reactivity, and
+  // writing `$state` here would collide with the legacy store syntax (see above).
+  let rowEl = null;
+  $effect(() => {
+    if (isCurrent && rowEl) rowEl.scrollIntoView({ block: "nearest" });
+  });
 
   // Lazy-load children on first expansion (mirrors the original's QFileSystemModel).
   async function loadChildren() {
@@ -18,7 +29,7 @@
       node.children = res.dirs.map((d) => ({ name: d.name, path: d.path }));
       node.loaded = true;
     } catch (e) {
-      state.error = e.message || String(e);
+      appState.error = e.message || String(e);
     } finally {
       node.loading = false;
     }
@@ -43,7 +54,7 @@
   }
 </script>
 
-<div class="row" style:padding-left="{depth * 14}px">
+<div class="row" bind:this={rowEl} style:padding-left="{depth * 14}px">
   <button class="twisty" onclick={onTwisty} aria-label={node.expanded ? t("tree.collapse") : t("tree.expand")}>
     {#if node.loading}…{:else if node.expanded}▾{:else if node.loaded}▸{/if}
   </button>
