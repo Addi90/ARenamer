@@ -88,6 +88,18 @@ export function clearSelection() {
   state.selection = [];
 }
 
+// --- modifier pipeline order ----------------------------------------------- #
+
+/** Move a modifier card to a new position in `config.pipeline_order` (drag & drop). */
+export function reorderModifier(from, to) {
+  if (from === to || from < 0 || to < 0) return;
+  const order = [...state.config.pipeline_order];
+  if (from >= order.length) return;
+  const [moved] = order.splice(from, 1);
+  order.splice(Math.min(to, order.length), 0, moved);
+  state.config.pipeline_order = order;
+}
+
 // --- preview --------------------------------------------------------------- #
 
 /** The selected filenames in on-screen list order (the payload for check/rename/preview). */
