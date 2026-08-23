@@ -12,7 +12,7 @@
   import CountingModifier from "./components/modifiers/CountingModifier.svelte";
   import DateModifier from "./components/modifiers/DateModifier.svelte";
   import ModifierCard from "./components/ModifierCard.svelte";
-  import { state as appState, loadDir, openHome, goUp, refreshPreview } from "./lib/state/store.svelte.js";
+  import { state as appState, loadDir, openHome, goUp, refreshPreview, resetModifierOrder, defaultConfig } from "./lib/state/store.svelte.js";
   import { language, setLanguage, t, languages } from "./lib/i18n/index.svelte.js";
 
   // id -> panel component; the sidebar renders them in `config.pipeline_order`.
@@ -29,6 +29,11 @@
   // Draft path in the input; committed only on Open/Enter (so typing doesn't
   // re-trigger preview with a half-typed path).
   let pathInput = $state("");
+
+  // True while the modifier order differs from the canonical default order.
+  const orderChanged = $derived(
+    appState.config.pipeline_order.some((id, i) => id !== defaultConfig().pipeline_order[i])
+  );
 
   function commitPath() {
     const p = pathInput.trim();
@@ -111,7 +116,12 @@
          dragging the cards. They live in a right-hand sidebar (scrollable) so
          they're always visible without page scrolling. -->
     <aside class="modifiers-pane">
-      <h2>{t("modifiers.title")}</h2>
+      <div class="pane-head">
+        <h2>{t("modifiers.title")}</h2>
+        {#if orderChanged}
+          <button onclick={resetModifierOrder} title={t("modifiers.resetOrder")}>{t("modifiers.resetOrder")}</button>
+        {/if}
+      </div>
       <p class="hint">{t("modifiers.dragHint")}</p>
       <section class="modifiers">
         {#each appState.config.pipeline_order as id, i (id)}
@@ -171,6 +181,7 @@
     min-height: 0;
   }
   .modifiers-pane h2 { margin: 0 0 4px; font-size: 0.95rem; color: #374151; }
+  .modifiers-pane .pane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 4px; }
   .modifiers-pane .hint { margin: 0 0 8px; font-size: 0.8rem; color: #6b7280; }
   /* The padding keeps the drop markers of the first/last card (which extend
      past the card edges) inside the scroll container — `overflow-y: auto`

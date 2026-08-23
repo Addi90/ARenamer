@@ -23,6 +23,7 @@ export const en = {
   // modifiers sidebar
   "modifiers.title": "Modifiers",
   "modifiers.dragHint": "Drag cards to change the pipeline order",
+  "modifiers.resetOrder": "Reset order",
 
   // file list
   "fileList.selectAll": "Select all",
