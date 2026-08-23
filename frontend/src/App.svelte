@@ -172,7 +172,10 @@
   }
   .modifiers-pane h2 { margin: 0 0 4px; font-size: 0.95rem; color: #374151; }
   .modifiers-pane .hint { margin: 0 0 8px; font-size: 0.8rem; color: #6b7280; }
-  .modifiers { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+  /* The padding keeps the drop markers of the first/last card (which extend
+     past the card edges) inside the scroll container — `overflow-y: auto`
+     would otherwise clip anything drawn above the top edge. */
+  .modifiers { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 10px 8px; }
 
   /* Narrow screens (phones / small browser windows): fall back to the stacked
      layout and let the page scroll, since three columns can't fit. */
