@@ -542,6 +542,70 @@ class TestPipelineOrder:
 
 
 # --------------------------------------------------------------------------- #
+# custom pipeline order (Config.pipeline_order)
+# --------------------------------------------------------------------------- #
+
+class TestCustomPipelineOrder:
+    def test_none_order_is_canonical(self):
+        f = one("abc")
+        cfg = Config(
+            counting=CountingConfig(enabled=True, position="suffix", start=1, padding=2),
+            remove=RemoveConfig(enabled=True, back=1),
+        )
+        compute([f], cfg)  # canonical: remove before counting -> "ab" + "01"
+        assert f.new_base == "ab01"
+
+    def test_custom_order_changes_result(self):
+        # counting before remove: "abc" -> "abc01" -> drop last char -> "abc0"
+        f = one("abc")
+        cfg = Config(
+            counting=CountingConfig(enabled=True, position="suffix", start=1, padding=2),
+            remove=RemoveConfig(enabled=True, back=1),
+            pipeline_order=["counting", "remove"],
+        )
+        compute([f], cfg)
+        assert f.new_base == "abc0"
+
+    def test_partial_custom_order_appends_missing_canonical_ids(self):
+        # only "counting" given: it runs first, missing ids are appended in
+        # canonical order (so remove still runs, after counting) -> "abc0"
+        f = one("abc")
+        cfg = Config(
+            counting=CountingConfig(enabled=True, position="suffix", start=1, padding=2),
+            remove=RemoveConfig(enabled=True, back=1),
+            pipeline_order=["counting"],
+        )
+        compute([f], cfg)
+        assert f.new_base == "abc0"
+
+    def test_unknown_ids_are_dropped(self):
+        # "nope" is dropped; counting stays first of the remaining ids
+        f = one("abc")
+        cfg = Config(
+            counting=CountingConfig(enabled=True, position="suffix", start=1, padding=2),
+            remove=RemoveConfig(enabled=True, back=1),
+            pipeline_order=["nope", "counting"],
+        )
+        compute([f], cfg)
+        assert f.new_base == "abc0"
+
+
+class TestPipelineOrderSerialization:
+    def test_round_trip(self):
+        cfg = Config(pipeline_order=["counting", "remove"])
+        assert Config.from_dict(cfg.to_dict()).pipeline_order == ["counting", "remove"]
+
+    def test_null_order_becomes_none(self):
+        assert Config.from_dict({"pipeline_order": None}).pipeline_order is None
+
+    def test_non_list_order_becomes_none(self):
+        assert Config.from_dict({"pipeline_order": "counting"}).pipeline_order is None
+
+    def test_non_string_entries_become_none(self):
+        assert Config.from_dict({"pipeline_order": [1, "counting"]}).pipeline_order is None
+
+
+# --------------------------------------------------------------------------- #
 # preview + check_duplicates helpers
 # --------------------------------------------------------------------------- #
 

@@ -174,6 +174,7 @@ class Config:
     remove: RemoveConfig = field(default_factory=RemoveConfig)
     counting: CountingConfig = field(default_factory=CountingConfig)
     date: DateConfig = field(default_factory=DateConfig)
+    pipeline_order: Optional[list[str]] = None  # custom modifier order; None = canonical
 
     # -- (de)serialization for the JSON API ---------------------------------- #
     @classmethod
@@ -210,6 +211,10 @@ class Config:
             except ValueError:
                 date_cfg.custom_date = None
 
+        order = data.get("pipeline_order")
+        if not isinstance(order, list) or any(not isinstance(o, str) for o in order):
+            order = None  # null / non-list / non-string entries -> canonical order
+
         return cls(
             add=_build(AddConfig, "add"),
             ifthen=_build(IfThenConfig, "ifthen"),
@@ -218,6 +223,7 @@ class Config:
             remove=_build(RemoveConfig, "remove"),
             counting=_build(CountingConfig, "counting"),
             date=date_cfg,
+            pipeline_order=order,
         )
 
     def to_dict(self) -> dict:

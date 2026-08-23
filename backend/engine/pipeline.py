@@ -5,10 +5,11 @@ and deterministic: every call starts from the original base names, so repeated c
 with the same inputs yield identical results (the original re-ran the whole pipeline
 for preview, duplicate-check, and save).
 
-Modifier application order is fixed and part of the contract:
+Canonical modifier application order (the default):
     Replace -> Case -> If-Then -> Remove -> Add -> Counting -> Date
 
-Only *active* (enabled) modifiers run.
+``Config.pipeline_order`` may override it (e.g. the UI's drag-and-drop). Only
+*active* (enabled) modifiers run.
 """
 
 from __future__ import annotations
@@ -17,6 +18,36 @@ import os
 
 from . import add, case, date, ifthen, number, remove, replace
 from .models import Config, RenameFile
+
+#: Canonical modifier order (the locked-in default, used when no custom order is
+#: given). Each id maps to the (module, config attribute) pair that runs it.
+CANONICAL_ORDER = ("replace", "case", "ifthen", "remove", "add", "counting", "date")
+
+_MODIFIERS = {
+    "replace": (replace, "replace"),
+    "case": (case, "case"),
+    "ifthen": (ifthen, "ifthen"),
+    "remove": (remove, "remove"),
+    "add": (add, "add"),
+    "counting": (number, "counting"),
+    "date": (date, "date"),
+}
+
+
+def resolve_order(config: Config) -> list[str]:
+    """Resolve the effective pipeline order for a config.
+
+    Falls back to :data:`CANONICAL_ORDER` when no custom order is set. Unknown ids
+    are dropped; ids missing from a custom order are appended in canonical order,
+    so a partial custom order never silently skips a modifier.
+    """
+    order = list(config.pipeline_order or [])
+    seen = set(order)
+    for canonical in CANONICAL_ORDER:
+        if canonical not in seen:
+            order.append(canonical)
+            seen.add(canonical)
+    return [m for m in order if m in _MODIFIERS]
 
 
 def compute(files: list[RenameFile], config: Config) -> list[RenameFile]:
@@ -28,21 +59,12 @@ def compute(files: list[RenameFile], config: Config) -> list[RenameFile]:
     # 2. sort by row for deterministic, in-list-order numbering (sortList)
     files.sort(key=lambda f: f.row)
 
-    # 3. apply each active modifier in the fixed order
-    if config.replace.enabled:
-        replace.modify(files, config.replace)
-    if config.case.enabled:
-        case.modify(files, config.case)
-    if config.ifthen.enabled:
-        ifthen.modify(files, config.ifthen)
-    if config.remove.enabled:
-        remove.modify(files, config.remove)
-    if config.add.enabled:
-        add.modify(files, config.add)
-    if config.counting.enabled:
-        number.modify(files, config.counting)
-    if config.date.enabled:
-        date.modify(files, config.date)
+    # 3. apply each active modifier in order (canonical, or the config's custom order)
+    for name in resolve_order(config):
+        module, attr = _MODIFIERS[name]
+        cfg = getattr(config, attr)
+        if cfg.enabled:
+            module.modify(files, cfg)
 
     return files
 
