@@ -7,7 +7,7 @@
   // `index` is the card's position in the store's `pipeline_order` (the drop
   // slot). The drop is deferred to the next frame so the browser finishes the
   // drag (dragend) before the {#each} re-renders the reordered cards.
-  let { id, index } = $props();
+  let { id, index, children } = $props();
 
   let cardEl;
   let dragging = $state(false);
@@ -54,7 +54,7 @@
 <div class="card" class:dragging class:over bind:this={cardEl} draggable={false}
      ondragstart={onDragStart} ondragend={endDrag} ondragover={onDragOver} ondragleave={onDragLeave} ondrop={onDrop}>
   <span class="grip" role="button" onmousedown={startDrag} title={t("modifiers.dragHint")} aria-label={t("modifiers.dragHint")}>⠿</span>
-  <slot />
+  {@render children()}
 </div>
 
 <style>
