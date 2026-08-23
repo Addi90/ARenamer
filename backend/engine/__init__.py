@@ -24,6 +24,7 @@ from .models import (
     split_name,
 )
 from .pipeline import (
+    CANONICAL_ORDER,
     build_files,
     check_duplicates,
     compute,
@@ -34,6 +35,7 @@ from .pipeline import (
 
 __all__ = [
     "Config",
+    "CANONICAL_ORDER",
     "RenameFile",
     "AddConfig",
     "CaseConfig",

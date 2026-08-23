@@ -6,9 +6,13 @@
  * silently ignores unknown keys, so a mismatched field name is a silent no-op.
  */
 
+/** The canonical modifier order (mirrors `CANONICAL_ORDER` in the engine). */
+export const PIPELINE_ORDER = ["replace", "case", "ifthen", "remove", "add", "counting", "date"];
+
 /** A fresh, all-disabled modifier config (mirrors `Config.to_dict()`). */
 export function defaultConfig() {
   return {
+    pipeline_order: [...PIPELINE_ORDER], // drag-and-drop reorders this list (None/absent = canonical)
     add: { enabled: false, prefix: "", suffix: "", insert: "", insert_pos: 0 },
     ifthen: {
       enabled: false,

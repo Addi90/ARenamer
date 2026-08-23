@@ -23,6 +23,8 @@ export const de = {
 
   // modifiers sidebar
   "modifiers.title": "Modifikatoren",
+  "modifiers.dragHint": "Karten per Drag & Drop umsortieren",
+  "modifiers.resetOrder": "Reihenfolge zurücksetzen",
 
   // file list
   "fileList.selectAll": "Alle auswählen",
