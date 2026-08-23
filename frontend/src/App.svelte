@@ -11,8 +11,20 @@
   import AddModifier from "./components/modifiers/AddModifier.svelte";
   import CountingModifier from "./components/modifiers/CountingModifier.svelte";
   import DateModifier from "./components/modifiers/DateModifier.svelte";
+  import ModifierCard from "./components/ModifierCard.svelte";
   import { state as appState, loadDir, openHome, goUp, refreshPreview } from "./lib/state/store.svelte.js";
   import { language, setLanguage, t, languages } from "./lib/i18n/index.svelte.js";
+
+  // id -> panel component; the sidebar renders them in `config.pipeline_order`.
+  const MODIFIERS = {
+    replace: ReplaceModifier,
+    case: CaseModifier,
+    ifthen: IfThenModifier,
+    remove: RemoveModifier,
+    add: AddModifier,
+    counting: CountingModifier,
+    date: DateModifier,
+  };
 
   // Draft path in the input; committed only on Open/Enter (so typing doesn't
   // re-trigger preview with a half-typed path).
@@ -93,20 +105,21 @@
       {/snippet}
       <FileList {actions} />
     </div>
-    <!-- Panels are rendered in pipeline order (Replace → Case → If-Then → Remove →
-         Add → Counting → Date) so the composition order is visible to the user. They live
-         in a right-hand sidebar (scrollable) so they're always visible without page
-         scrolling — like the original desktop app, but side-by-side. -->
+    <!-- Panels are rendered in `config.pipeline_order` (canonical default:
+         Replace → Case → If-Then → Remove → Add → Counting → Date) so the
+         composition order is visible to the user, and can be rearranged by
+         dragging the cards. They live in a right-hand sidebar (scrollable) so
+         they're always visible without page scrolling. -->
     <aside class="modifiers-pane">
       <h2>{t("modifiers.title")}</h2>
+      <p class="hint">{t("modifiers.dragHint")}</p>
       <section class="modifiers">
-        <ReplaceModifier />
-        <CaseModifier />
-        <IfThenModifier />
-        <RemoveModifier />
-        <AddModifier />
-        <CountingModifier />
-        <DateModifier />
+        {#each appState.config.pipeline_order as id, i (id)}
+          {@const Comp = MODIFIERS[id]}
+          <ModifierCard {id} index={i}>
+            {#if Comp}<Comp />{/if}
+          </ModifierCard>
+        {/each}
       </section>
     </aside>
   </div>
@@ -157,7 +170,8 @@
     flex-direction: column;
     min-height: 0;
   }
-  .modifiers-pane h2 { margin: 0 0 8px; font-size: 0.95rem; color: #374151; }
+  .modifiers-pane h2 { margin: 0 0 4px; font-size: 0.95rem; color: #374151; }
+  .modifiers-pane .hint { margin: 0 0 8px; font-size: 0.8rem; color: #6b7280; }
   .modifiers { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
 
   /* Narrow screens (phones / small browser windows): fall back to the stacked
