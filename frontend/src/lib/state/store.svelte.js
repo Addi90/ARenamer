@@ -88,6 +88,28 @@ export function clearSelection() {
   state.selection = [];
 }
 
+// --- modifier pipeline order ----------------------------------------------- #
+
+/**
+ * Move a modifier card to a new slot in `config.pipeline_order` (drag & drop).
+ * `to` is the insertion *slot*: insert before whatever currently sits at
+ * index `to` (so `to` may be `order.length`, i.e. append at the end). Slots
+ * match the on-screen insertion-line indicator.
+ */
+export function reorderModifier(from, to) {
+  if (from < 0 || to < 0) return;
+  const order = [...state.config.pipeline_order];
+  if (from >= order.length || to === from || to === from + 1) return;
+  const [moved] = order.splice(from, 1);
+  order.splice(to > from ? to - 1 : to, 0, moved);
+  state.config.pipeline_order = order;
+}
+
+/** Reset the modifier order to the canonical pipeline order (undo drag & drop changes). */
+export function resetModifierOrder() {
+  state.config.pipeline_order = [...defaultConfig().pipeline_order];
+}
+
 // --- preview --------------------------------------------------------------- #
 
 /** The selected filenames in on-screen list order (the payload for check/rename/preview). */

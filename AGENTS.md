@@ -39,12 +39,17 @@ When a preview or rename is computed, the engine (`backend/engine/pipeline.py`) 
 
 1. **Reset** every file's `new_base` to its original base name.
 2. **Sort** files by list row (deterministic, in-list-order numbering).
-3. Apply each **active** modifier in this fixed order:
+3. Apply each **active** modifier in pipeline order:
 
    `Replace → Case → If-Then → Remove → Add → Counting → Date`
 
-Each modifier transforms `new_base` in place, feeding the next. **This order is part
-of the contract** and must be preserved (it's locked in by `tests/test_engine.py`).
+The canonical order above is the **default** (`CANONICAL_ORDER` in
+`backend/engine/pipeline.py`) and is locked in by `tests/test_engine.py`. It is
+**user-adjustable**: `Config.pipeline_order` (an optional list of modifier ids,
+`None` = canonical) lets the UI drag-and-drop the modifier cards into a custom
+sequence. `resolve_order()` is defensive: unknown ids are dropped, missing ids
+are appended in canonical order, so a partial/odd list never skips a modifier.
+The order still applies to **all files uniformly** (there is no per-file order).
 
 Only the **base name** is ever modified. The extension (everything from the last `.`
 onward, dot included) is preserved and re-appended on rename. Files with no dot have
@@ -114,6 +119,10 @@ The original had a few quirks. This rebuild makes explicit choices:
   faithful direct concatenation). When set, it goes between the date and the name text on each
   side that exists (`photo-2024-05-01`, `2024-05-01-photo`), never leaving a dangling
   separator at an edge or against an empty base.
+- **Adjustable pipeline order — ADDED (not in the original).** The canonical order
+  (§2) stays the default and the test baseline; the UI additionally lets the user
+  drag the modifier cards into a custom sequence (`Config.pipeline_order`). The
+  order is per-session (no persistence — a fresh start always uses canonical).
 - **Invalid regex is a no-op** (does not crash the live preview) — a deliberate safety choice.
 - **Empty Replace search is a no-op** (a deliberate safety choice). `str.replace("", x)` would
   otherwise insert the replacement between every character and mangle names on disk.
@@ -147,7 +156,7 @@ arenamer/
 │       ├── components/        # FileList, DirectoryTree (+TreeNode), RenameButton, Dialog (done)
 │       └── components/modifiers/  # all seven panels: Replace, Case, IfThen, Remove, Add, Counting, Date
 └── tests/
-    ├── test_engine.py         # engine suite (61 tests) — modifiers, pipeline order, edge cases
+    ├── test_engine.py         # engine suite (96 tests) — modifiers, pipeline order (incl. custom), edge cases
     └── test_api.py            # API suite (10 tests) — list/dirs/preview/check/rename over HTTP
 ```
 
