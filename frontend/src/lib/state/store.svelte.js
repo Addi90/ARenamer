@@ -92,10 +92,9 @@ export function clearSelection() {
 
 /**
  * Move a modifier card to a new slot in `config.pipeline_order` (drag & drop).
- *
- * `from` is the card's current index; `to` is the insertion *slot*: insert
- * before whatever currently sits at index `to` (so `to` may be `order.length`,
- * i.e. append at the end). Slots match the on-screen insertion-line indicator.
+ * `to` is the insertion *slot*: insert before whatever currently sits at
+ * index `to` (so `to` may be `order.length`, i.e. append at the end). Slots
+ * match the on-screen insertion-line indicator.
  */
 export function reorderModifier(from, to) {
   if (from < 0 || to < 0) return;
@@ -104,6 +103,11 @@ export function reorderModifier(from, to) {
   const [moved] = order.splice(from, 1);
   order.splice(to > from ? to - 1 : to, 0, moved);
   state.config.pipeline_order = order;
+}
+
+/** Reset the modifier order to the canonical pipeline order (undo drag & drop changes). */
+export function resetModifierOrder() {
+  state.config.pipeline_order = [...defaultConfig().pipeline_order];
 }
 
 // --- preview --------------------------------------------------------------- #

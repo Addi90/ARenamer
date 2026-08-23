@@ -15,7 +15,7 @@
   let cardEl;
   let dragging = $state(false);
   let slot = $state(null); // 0 = insert before, 1 = insert after, null = idle
-  let horiz = $state(false); // marker orientation (side-by-side cards on narrow screens)
+  let horiz = $state(false); // marker orientation (true = cards sit side by side)
 
   function startDrag() {
     if (cardEl) cardEl.draggable = true;
@@ -33,11 +33,15 @@
     slot = null;
   }
 
-  // True when the cards sit side by side (narrow-screen grid) and the insertion
-  // marker runs vertically along the card's left/right edge.
+  // True when the card sits side by side with other cards (multiple columns
+  // fit in the list), in which case the marker runs vertically along the
+  // card's left/right edge. Measured via card vs. container width, because
+  // the narrow-screen layout is a *grid* even when only one column (stacked
+  // cards) actually fits — `display: grid` alone is not enough.
   function isHorizontal() {
     const list = cardEl?.closest(".modifiers");
-    return list ? getComputedStyle(list).display === "grid" : false;
+    if (!list) return false;
+    return cardEl.getBoundingClientRect().width < list.clientWidth * 0.9;
   }
 
   function onDragOver(e) {
