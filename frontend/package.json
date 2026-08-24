@@ -17,6 +17,7 @@
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@testing-library/svelte": "^5.2.0",
     "happy-dom": "^16.0.0",
+    "jsdom": "^30.0.1",
     "vite": "^6.0.0",
     "vitest": "^3.0.0"
   }
