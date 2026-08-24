@@ -23,6 +23,9 @@ export default defineConfig({
   ssr: {
     noExternal: ["svelte", "@testing-library/svelte", "@testing-library/svelte-core"],
     resolve: {
+      // Vite only honors top-level resolve.conditions for client builds; the
+      // SSR transform used by Vitest needs the "svelte" condition here so
+      // `mount` resolves to the client runtime, not index-server.js.
       conditions: ["svelte"],
     },
   },

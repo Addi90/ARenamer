@@ -156,8 +156,9 @@ arenamer/
 │       ├── components/        # FileList, DirectoryTree (+TreeNode), RenameButton, Dialog (done)
 │       └── components/modifiers/  # all seven panels: Replace, Case, IfThen, Remove, Add, Counting, Date
 └── tests/
-    ├── test_engine.py         # engine suite (96 tests) — modifiers, pipeline order (incl. custom), edge cases
-    └── test_api.py            # API suite (10 tests) — list/dirs/preview/check/rename over HTTP
+    └── backend/
+        ├── test_engine.py     # engine suite (96 tests) — modifiers, pipeline order (incl. custom), edge cases
+        └── test_api.py        # API suite (10 tests) — list/dirs/preview/check/rename over HTTP
 ```
 
 ### Engine public API (`backend/engine/__init__.py`)
@@ -242,8 +243,11 @@ python run.py                            # desktop window (or web fallback at :8
 
 ### Tests (the engine is the verified core)
 ```sh
-python3 -m pytest tests/ -v             # from repo root
+python3 -m pytest tests/ -v             # from repo root (pytest suite lives in tests/backend/)
 ```
+
+`./do test` runs the pytest suite above plus the frontend vitest suite
+(`cd frontend && npm run test`) — one command covers both.
 
 ### Frontend (Svelte)
 ```sh
@@ -273,6 +277,10 @@ Toolchain notes (keep these when changing the test setup):
   happy-dom.
 - Store/i18n are module-level `$state` singletons: unit tests get fresh state via
   `vi.resetModules()` + dynamic import (store) or explicit resets (component smoke tests).
+- Frontend tests stay **co-located under `frontend/src/`** (vitest convention). A shared
+  `tests/frontend/` folder was tried and abandoned: Vite refuses to load test files outside
+  its project root even with `root` lifted to the repo root. The Python suite lives in
+  `tests/backend/`.
 
 For a full desktop run: start the backend (`python run.py` or `uvicorn backend.main:app`)
 and either open http://127.0.0.1:8000 (after `npm run build`) or use the Vite dev server.
