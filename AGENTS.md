@@ -145,7 +145,7 @@ arenamer/
 │   │   ├── add.py remove.py replace.py case.py number.py ifthen.py date.py
 │   └── static/                # built SPA (gitignored; `npm run build` output)
 ├── frontend/                  # Svelte SPA (Vite)
-│   ├── package.json  vite.config.js  index.html
+│   ├── package.json  vite.config.js  vitest.config.js  index.html
 │   └── src/
 │       ├── main.js            # mounts the Svelte app
 │       ├── App.svelte         # root: path bar + tree | file list layout + modifier panels + live-preview effect
@@ -156,8 +156,9 @@ arenamer/
 │       ├── components/        # FileList, DirectoryTree (+TreeNode), RenameButton, Dialog (done)
 │       └── components/modifiers/  # all seven panels: Replace, Case, IfThen, Remove, Add, Counting, Date
 └── tests/
-    ├── test_engine.py         # engine suite (96 tests) — modifiers, pipeline order (incl. custom), edge cases
-    └── test_api.py            # API suite (10 tests) — list/dirs/preview/check/rename over HTTP
+    └── backend/
+        ├── test_engine.py     # engine suite (96 tests) — modifiers, pipeline order (incl. custom), edge cases
+        └── test_api.py        # API suite (10 tests) — list/dirs/preview/check/rename over HTTP
 ```
 
 ### Engine public API (`backend/engine/__init__.py`)
@@ -242,15 +243,44 @@ python run.py                            # desktop window (or web fallback at :8
 
 ### Tests (the engine is the verified core)
 ```sh
-python3 -m pytest tests/ -v             # from repo root
+python3 -m pytest tests/ -v             # from repo root (pytest suite lives in tests/backend/)
 ```
+
+`./do test` runs the pytest suite above plus the frontend vitest suite
+(`cd frontend && npm run test`) — one command covers both.
 
 ### Frontend (Svelte)
 ```sh
 cd frontend && npm install
 npm run dev                             # Vite dev server on :5173 (proxies /api -> :8000)
 npm run build                           # emits to ../backend/static for the desktop app
+npm run test                            # vitest unit tests (no CI — local only)
 ```
+
+### Frontend tests (vitest, local only — no CI integration)
+
+`npm run test` in `frontend/` runs the vitest suite (currently 35 tests across
+four files): `lib/config.test.js` (defaultConfig/sanitizeConfig),
+`lib/i18n/languages.test.js` (en/de key parity, locale detection, `t()`),
+`lib/state/store.svelte.test.js` (selection, pipeline order, dialogs, api-backed
+flows with `vi.mock` of `lib/api.js`), and `components/components.smoke.test.js`
+(FileList / Dialog / RenameButton render + interaction smoke tests against the
+real module-level store).
+
+Toolchain notes (keep these when changing the test setup):
+- `vitest.config.js` is deliberately separate from `vite.config.js` so the
+  production build is untouched. It aliases bare `svelte` to its **client entry** —
+  under Vitest's SSR-style transform it otherwise resolves to `index-server.js`
+  and `mount()` throws `lifecycle_function_unavailable`.
+- `components.smoke.test.js` opts into **jsdom** via `// @vitest-environment jsdom`
+  (happy-dom crashes inside Svelte 5 checkbox mounting); everything else runs on
+  happy-dom.
+- Store/i18n are module-level `$state` singletons: unit tests get fresh state via
+  `vi.resetModules()` + dynamic import (store) or explicit resets (component smoke tests).
+- Frontend tests stay **co-located under `frontend/src/`** (vitest convention). A shared
+  `tests/frontend/` folder was tried and abandoned: Vite refuses to load test files outside
+  its project root even with `root` lifted to the repo root. The Python suite lives in
+  `tests/backend/`.
 
 For a full desktop run: start the backend (`python run.py` or `uvicorn backend.main:app`)
 and either open http://127.0.0.1:8000 (after `npm run build`) or use the Vite dev server.
