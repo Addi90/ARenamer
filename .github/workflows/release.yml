@@ -1,0 +1,75 @@
+name: Release (bump + tag on master)
+
+# Cuts a release when a release/* PR is merged into master:
+#   1. `do bump`  — decides the semver bump from the conventional commits since
+#      the last tag, updates pyproject.toml + frontend/package.json, prepends
+#      changelog.md and commits `chore(release): vX`.
+#   2. `do tag`   — tags that commit as v<version> (master-only, enforced by `do`).
+#   3. pushes the commit + tag -> triggers build.yml, which produces the
+#      per-OS desktop builds and the GitHub Release.
+#
+# Only merged PRs from release/* branches trigger this (see the `if:` below),
+# so commits landing on master by other means never accidentally cut a release.
+# If `do bump` finds no commits since the last tag it exits without committing,
+# and the tag step is skipped — the workflow is idempotent.
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.base_ref }}
+  cancel-in-progress: false
+
+jobs:
+  bump-and-tag:
+    if: >-
+      github.pull_request.merged &&
+      github.base_ref == 'master' &&
+      startsWith(github.head_ref, 'release/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # For pull_request events the default ref is the merge commit on the
+          # target branch — that is the new master HEAD.
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          # Full history + tags: `do bump` uses `git describe --tags` and
+          # `git log <tag>..HEAD`.
+          fetch-depth: 0
+
+      # `do` is pure stdlib but imports tomllib, which needs Python >= 3.11
+      # (runner system python is older).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version + write changelog (do bump)
+        id: bump
+        run: |
+          before="$(git rev-parse HEAD)"
+          python do bump
+          after="$(git rev-parse HEAD)"
+          echo "before=$before" >> "$GITHUB_OUTPUT"
+          echo "after=$after" >> "$GITHUB_OUTPUT"
+          if [ "$before" != "$after" ]; then
+            git log --oneline "$before..$after"
+          else
+            echo "no release commit was created - skipping tag"
+          fi
+
+      - name: Tag the release (do tag) and push
+        if: steps.bump.outputs.before != steps.bump.outputs.after
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python do tag
+          git push origin HEAD:master --tags

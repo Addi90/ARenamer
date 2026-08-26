@@ -1,0 +1,98 @@
+name: CI
+
+# Development pipeline: runs on every PR and on direct pushes to develop.
+# Split into parallel jobs so failures are attributable and fast:
+#   - backend-tests:  pytest suite (engine + API), matrix over supported Pythons
+#   - frontend-tests: vitest unit suite
+#   - frontend-build: production vite build (the SPA that gets bundled)
+#   - version-sync:   pyproject.toml and frontend/package.json versions match
+# (The release workflows in release.yml / build.yml handle tagging and the
+# per-OS PyInstaller desktop builds.)
+
+on:
+  pull_request:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  backend-tests:
+    name: Backend (pytest) — py${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # requires-python is ">=3.10": test the floor and current LTS.
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Run engine + API test suite
+        run: python -m pytest tests/ -v
+
+  frontend-tests:
+    name: Frontend (vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Run vitest suite
+        working-directory: frontend
+        run: npm run test
+
+  frontend-build:
+    name: Frontend (vite build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build SPA (emits to ../backend/static)
+        working-directory: frontend
+        run: npm run build
+
+  version-sync:
+    name: Version sync check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check pyproject.toml == frontend/package.json
+        run: |
+          python - <<'EOF'
+          import json, sys, tomllib
+          py = tomllib.load(open("pyproject.toml", "rb"))["project"]["version"]
+          fe = json.load(open("frontend/package.json"))["version"]
+          print(f"pyproject.toml:        {py}")
+          print(f"frontend/package.json: {fe}")
+          sys.exit(0 if py == fe else 1)
+          EOF
