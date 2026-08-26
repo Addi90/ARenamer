@@ -134,6 +134,7 @@ The original had a few quirks. This rebuild makes explicit choices:
 ```
 arenamer/
 ├── run.py                     # one-command launcher (desktop window, or web fallback)
+├── do                         # release tooling: bump/tag/changelog/build/test (pure stdlib)
 ├── requirements.txt           # runtime deps: fastapi, uvicorn, pywebview
 ├── requirements-dev.txt       # + pytest
 ├── backend/
@@ -155,6 +156,7 @@ arenamer/
 │       ├── lib/state/         # store.svelte.js — central $state (files, selection, config, previews, dialog)
 │       ├── components/        # FileList, DirectoryTree (+TreeNode), RenameButton, Dialog (done)
 │       └── components/modifiers/  # all seven panels: Replace, Case, IfThen, Remove, Add, Counting, Date
+├── .github/workflows/         # GitHub Actions: ci.yml (dev), release.yml (bump+tag), build.yml (3-OS releases)
 └── tests/
     └── backend/
         ├── test_engine.py     # engine suite (96 tests) — modifiers, pipeline order (incl. custom), edge cases
@@ -254,10 +256,10 @@ python3 -m pytest tests/ -v             # from repo root (pytest suite lives in 
 cd frontend && npm install
 npm run dev                             # Vite dev server on :5173 (proxies /api -> :8000)
 npm run build                           # emits to ../backend/static for the desktop app
-npm run test                            # vitest unit tests (no CI — local only)
+npm run test                            # vitest unit tests (also runs in CI, see below)
 ```
 
-### Frontend tests (vitest, local only — no CI integration)
+### Frontend tests (vitest)
 
 `npm run test` in `frontend/` runs the vitest suite (currently 35 tests across
 four files): `lib/config.test.js` (defaultConfig/sanitizeConfig),
@@ -318,6 +320,39 @@ Packaging internals:
 The frozen app resolves its bundled SPA via `backend/main.py:_base_dir()` (uses `sys._MEIPASS`
 when frozen), and picks a free localhost port in `run.py` so instances don't clash.
 
+### CI & releases (GitHub Actions)
+
+Three workflows in `.github/workflows/` cover development and release; they reuse
+`do` (stdlib-only, so it runs in CI without installs) and `build/build.py` — keep both
+self-contained if you change them. No branch protection is configured (solo development).
+
+- **`ci.yml` — development pipeline.** Triggers: every PR + pushes to `develop`.
+  Four parallel jobs: `backend-tests` (pytest, matrix over Python 3.10 + 3.12),
+  `frontend-tests` (vitest, Node 22), `frontend-build` (production vite build), and
+  `version-sync` (asserts `pyproject.toml` == `frontend/package.json`). pip/npm caching
+  and cancel-in-progress concurrency are set.
+- **`release.yml` — version bump + tag on master.** Trigger: a merged PR whose head
+  branch starts with `release/` and whose base is `master`. It checks out the merge
+  commit with `fetch-depth: 0` (`do bump` needs `git describe --tags` and
+  `git log tag..HEAD`), then: (1) `do bump` → semver decision from the conventional
+  commits since the last tag, version + changelog commit; (2) if HEAD moved, `do tag`
+  → `v<version>` on that commit, and the commit + tag are pushed. Idempotent: nothing
+  new since the last tag → no commit, no tag, job ends. Note: `do` imports `tomllib`,
+  so the job sets up Python 3.12 first (runner system Python is older).
+- **`build.yml` — desktop builds + GitHub Release.** Trigger: tag push `v<digit>*`
+  (fired by `release.yml`). Three parallel OS jobs — `macos-latest`, `windows-latest`,
+  `ubuntu-latest` (PyInstaller cannot cross-compile): install runtime + PyInstaller
+  deps, `python do build` (frontend → bundle → versioned archive), then run the
+  headless smoke test (`build/smoke.spec` → `dist/arenamer-smoke[.exe]`) as proof the
+  frozen bundle imports and serves — the only CI signal that the app actually starts.
+  Linux additionally apt-installs the WebKit2GTK runtime + typelibs for the `gtk` driver.
+  A final `release` job attaches the three artifacts to the GitHub Release, using the
+  matching `changelog.md` section as the release notes.
+
+Release flow: branch `release/vX.Y.Z` off `develop` (conventional commits) → PR to
+`master` → `release.yml` bumps + tags → `build.yml` publishes all three OS artifacts.
+Artifacts are unsigned (Gatekeeper/SmartScreen notes from the Packaging section apply).
+
 ---
 
 ## 7. Milestone plan & status
@@ -332,8 +367,12 @@ when frozen), and picks a free localhost port in `run.py` so instances don't cla
 | 6 | Modifier panels: all six with live preview + active indicators (✓/✗) | ✅ done |
 | 7 | i18n: German + English, runtime switcher, system-locale auto-detect | ✅ done |
 | 8 | Polish: dark mode, keyboard shortcuts, drag-and-drop, empty states, error handling | ⬜ next |
+| 9 | CI: GitHub Actions (dev pipeline, automated bump + tag on master, 3-OS release builds) | ✅ done |
 
 ### Conventions for future work
+- CI reuses `do` and `build/build.py`: keep `do` stdlib-only and the build orchestrator
+  self-contained so the workflows keep working; job display names in `ci.yml` /
+  `release.yml` should stay stable.
 - Keep the engine **pure** (no web/fs-side-effect deps beyond what a rename needs); put
   HTTP concerns in `backend/api/`. Add engine behavior changes **with tests**.
 - The frontend is a single source of truth in `src/lib/state/`; components read/write the

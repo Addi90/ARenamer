@@ -55,6 +55,14 @@ python build/build.py                   # frontend -> PyInstaller -> versioned a
 
 PyInstaller cannot cross-compile, so run the build on each target OS to get that OS's artifact.
 
+## CI & Releases (GitHub Actions)
+
+- **Development** (`ci.yml`): every pull request (and push to `develop`) runs, in parallel, the Python test suite (engine + API on Python 3.10 and 3.12), the Svelte/vitest frontend tests, the production frontend build, and a version-sync check (`pyproject.toml` vs `frontend/package.json`).
+- **Release** (`release.yml`): when a `release/*` branch is merged into `master`, the version is bumped automatically from the conventional commits since the last tag (`do bump`), `changelog.md` is updated and committed, and the commit is tagged `v<version>` (`do tag`).
+- **Builds** (`build.yml`): on each release tag, the desktop app is built on macOS, Windows and Linux (PyInstaller cannot cross-compile), validated with a headless smoke test of the frozen bundle, and published as a GitHub Release with the matching changelog section as the release notes.
+
+So a release is simply: branch `release/vX.Y.Z` off `develop` → pull request to `master` → the tag and all three artifacts appear automatically.
+
 ## Repository layout
 
 ```
