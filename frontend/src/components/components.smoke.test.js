@@ -29,11 +29,21 @@ const FILES = [
   { name: "b.log", size: 2, mtime: 0 },
 ];
 
+const MIXED = [
+  { name: "a.txt", type: "file", size: 1, mtime: 0 },
+  { name: "Photos", type: "dir", size: 0, mtime: 0 },
+  { name: "b.log", type: "file", size: 2, mtime: 0 },
+  { name: "Videos", type: "dir", size: 0, mtime: 0 },
+];
+
 function resetStore() {
   state.files = [...FILES];
   state.selection = [];
   state.previews = {};
   state.duplicateNames = [];
+  state.showFiles = true;
+  state.showDirs = false;
+  state.treeVersion = 0;
   state.dialog = { open: false, title: "", message: "", variant: "info", buttons: [], dismissId: null };
   state.error = "";
   state.renaming = false;
@@ -71,6 +81,38 @@ describe("FileList", () => {
     expect(state.selection).toContain("a.txt");
     await fireEvent.click(row);
     expect(state.selection).not.toContain("a.txt");
+  });
+
+  it("hides directory rows by default and shows them with the toggle", async () => {
+    state.files = [...MIXED];
+    render(FileList);
+    expect(screen.queryByText("Photos")).toBeNull(); // dirs hidden by default
+    expect(screen.getAllByText("a.txt").length).toBeGreaterThan(0); // files shown
+
+    await fireEvent.click(screen.getByLabelText("Directories"));
+    expect(screen.getAllByText("Photos").length).toBeGreaterThan(0); // both rows now
+    expect(screen.getAllByText("Videos").length).toBeGreaterThan(0);
+  });
+
+  it("marks directory rows with a type badge", async () => {
+    state.files = [...MIXED];
+    state.showDirs = true;
+    render(FileList);
+    // Badge text ("dir") appears once per directory row.
+    expect(screen.getAllByText("dir").length).toBe(2);
+  });
+
+  it("deselects hidden entries when their type is toggled off", async () => {
+    state.files = [...MIXED];
+    state.showDirs = true;
+    state.selection = ["a.txt", "Photos", "Videos"]; // select all (visible)
+    render(FileList);
+
+    await fireEvent.click(screen.getByLabelText("Directories")); // hide dirs
+    expect(state.selection).toEqual(["a.txt"]); // hidden entries pruned
+
+    await fireEvent.click(screen.getByLabelText("Files")); // hide files too
+    expect(state.selection).toEqual([]);
   });
 });
 

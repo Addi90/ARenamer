@@ -31,6 +31,7 @@ export const de = {
   "fileList.clear": "Auswahl aufheben",
   "fileList.toggleFiles": "Dateien",
   "fileList.toggleDirs": "Verzeichnisse",
+  "fileList.typeDir": "Ordner",
   "fileList.name": "Name",
   "fileList.newName": "Neuer Name",
   "fileList.empty": "Keine Einträge in diesem Verzeichnis.",
