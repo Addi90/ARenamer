@@ -2,13 +2,15 @@
 """Build the A-Renamer desktop app for the current operating system.
 
 A single, cross-platform orchestrator (no shell differences to maintain). It:
-  1. builds the Svelte frontend into ``backend/static`` (via npm), and
-  2. runs PyInstaller with ``build/arenamer.spec``, then
-  3. packages the result into a versioned archive under ``dist/``.
+  1. builds the Svelte frontend into ``backend/static`` (via npm),
+  2. (re)generates the native app icons in ``build/icons/`` from the logo,
+  3. runs PyInstaller with ``build/arenamer.spec``, then
+  4. packages the result into a versioned archive under ``dist/``.
 
 Run it with the project's virtualenv active (so PyInstaller + deps are available):
-    python build/build.py                 # frontend + bundle + archive
+    python build/build.py                 # frontend + icons + bundle + archive
     python build/build.py --no-frontend   # reuse an existing backend/static
+    python build/build.py --no-icons      # reuse the committed build/icons/
 
 Because PyInstaller cannot cross-compile, run this on each target OS to produce
 that OS's artifact (macOS -> .app/zip, Windows -> zip, Linux -> tar.gz).
@@ -57,6 +59,15 @@ def build_frontend() -> None:
     _run([npm, "run", "build"], FRONTEND_DIR)
     if not os.path.isfile(os.path.join(STATIC_DIR, "index.html")):
         sys.exit(f"error: frontend build did not produce {STATIC_DIR}/index.html")
+
+
+def build_icons() -> None:
+    """Regenerate build/icons/{png,ico,icns} from frontend/public/favicon.svg.
+
+    Best effort (see make_icons.py): without cairosvg/Pillow it keeps the
+    committed icons, so a fresh CI checkout still builds with the right icon.
+    """
+    _run([sys.executable, os.path.join(BUILD_DIR, "make_icons.py")], REPO_ROOT)
 
 
 def pyinstaller_build() -> None:
@@ -124,6 +135,7 @@ def _notes() -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--no-frontend", action="store_true", help="skip the npm build step")
+    parser.add_argument("--no-icons", action="store_true", help="skip icon (re)generation")
     args = parser.parse_args()
 
     version = _version()
@@ -131,6 +143,8 @@ def main() -> int:
 
     if not args.no_frontend:
         build_frontend()
+    if not args.no_icons:
+        build_icons()
     pyinstaller_build()
     package(version)
     _notes()
