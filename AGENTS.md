@@ -69,8 +69,8 @@ Numbering spans a mixed selection in on-screen list order (one combined sequence
 
 ## 3. Features / abilities (the full checklist)
 
-Every item below must work in the rebuilt UI. The engine side of most of these is
-already implemented and tested (Milestone 2); the UI wiring lands in later milestones.
+Every item below must work in the rebuilt UI. All of it is implemented and
+tested (see §7 for status).
 
 ### Navigation & selection
 - Browse/select a directory (native folder dialog and/or a directory tree).
@@ -176,6 +176,11 @@ arenamer/
 ├── do                         # release tooling: bump/tag/changelog/build/test (pure stdlib)
 ├── requirements.txt           # runtime deps: fastapi, uvicorn, pywebview
 ├── requirements-dev.txt       # + pytest
+├── pyproject.toml             # app name/version (read by the PyInstaller spec and CI version-sync)
+├── requirements-build.txt     # + pyinstaller
+├── build/                     # packaging: build.py (cross-platform orchestrator), arenamer.spec,
+│                              #   _bundle.py, _smoke.py + smoke.spec (headless frozen-bundle test);
+│                              #   build/arenamer/ and build/smoke/ are gitignored build output
 ├── backend/
 │   ├── main.py                # FastAPI app: static mount, /api/health, pywebview bootstrap
 │   ├── api/                   # API routes + Pydantic schemas (list/dirs/preview/check/rename)
@@ -193,7 +198,7 @@ arenamer/
 │       ├── lib/config.js      # defaultConfig() + sanitizeConfig() (plain JS, no runes)
 │       ├── lib/i18n/          # en.js + de.js (string tables) and index.svelte.js (language $state, t())
 │       ├── lib/state/         # store.svelte.js — central $state (files, selection, view toggles, config, previews, dialog)
-│       ├── components/        # FileList, DirectoryTree (+TreeNode), RenameButton, Dialog (done)
+│       ├── components/        # FileList, DirectoryTree (+TreeNode), RenameButton, ModifierCard, Dialog
 │       └── components/modifiers/  # all seven panels: Replace, Case, IfThen, Remove, Add, Counting, Date
 ├── .github/workflows/         # GitHub Actions: ci.yml (dev), release.yml (bump+tag), build.yml (3-OS releases)
 └── tests/
@@ -238,7 +243,8 @@ dialog → `/rename`.
   `$state` object (files, selection, **showFiles/showDirs view toggles**, **treeVersion**,
   config, previews, duplicateNames, dialog) plus action
   functions (`loadDir`, `openHome`, `goUp`, `toggleSelect`, `selectAll`, `clearSelection`,
-  `setShowFiles`, `setShowDirs`, `bumpTreeVersion`,
+  `setShowFiles`, `setShowDirs`, `reorderModifier`, `resetModifierOrder`,
+  `bumpTreeVersion`,
   `refreshPreview`, `showDialog`, `checkDuplicates`, `performRename`). `selectAll` selects
   the *visible* entries only; hiding a type prunes it from selection/previews/duplicates.
   Preview/check/rename payloads include the `dirs` field. It uses the
@@ -270,6 +276,11 @@ dialog → `/rename`.
   rooted at home (`/api/dirs` per expansion); clicking a node re-roots the file list. It
   watches `treeVersion` and re-fetches the children of every loaded node, so renamed
   directories get fresh labels.
+- **`components/ModifierCard.svelte`** — wrapper around each modifier panel: the grip
+  handle drag-and-drops the card into a custom `pipeline_order` (`reorderModifier`); the
+  hover marks the insertion gap with a line so the drop position is unambiguous (the drop
+  is deferred a frame so the `{#each}` can re-render). Cards are `role="listitem"` inside
+  the `role="list"` modifier sidebar (`App.svelte`).
 - **`components/RenameButton.svelte`** — drives the rename workflow: `/api/check` (blocking
   duplicate warning) → confirm dialog → `/api/rename` → success dialog, then re-lists the
   dir and bumps `treeVersion` (tree label refresh).
@@ -281,10 +292,6 @@ dialog → `/rename`.
   (native-app feel); below ~980px it falls back to a stacked, page-scrolling layout.
   A debounced `$effect` re-runs `/api/preview` whenever config, selection or directory
   changes (live preview).
-
-> **Preview shows the full name** (`base + extension`), a deliberate *fix* of the original's
-> base-only preview column (see §4): it is more useful and unambiguous. The engine still returns
-> `new_base`/`ext` separately, so this is a display choice only.
 
 ---
 
@@ -318,7 +325,7 @@ npm run test                            # vitest unit tests (also runs in CI, se
 `npm run test` in `frontend/` runs the vitest suite (currently 46 tests across
 four files): `lib/config.test.js` (defaultConfig/sanitizeConfig),
 `lib/i18n/languages.test.js` (en/de key parity, locale detection, `t()`),
-`lib/state/store.svelte.test.js` (selection, pipeline order, dialogs, api-backed
+`lib/state/store.svelte.test.js` (selection, view toggles, pipeline order, dialogs, api-backed
 flows with `vi.mock` of `lib/api.js`), and `components/components.smoke.test.js`
 (FileList / Dialog / RenameButton render + interaction smoke tests against the
 real module-level store).
@@ -337,9 +344,6 @@ Toolchain notes (keep these when changing the test setup):
   `tests/frontend/` folder was tried and abandoned: Vite refuses to load test files outside
   its project root even with `root` lifted to the repo root. The Python suite lives in
   `tests/backend/`.
-
-For a full desktop run: start the backend (`python run.py` or `uvicorn backend.main:app`)
-and either open http://127.0.0.1:8000 (after `npm run build`) or use the Vite dev server.
 
 ### Packaging (distributable desktop app)
 
@@ -420,7 +424,7 @@ Artifacts are unsigned (Gatekeeper/SmartScreen notes from the Packaging section 
 | 5 | UI: file list (multi-select), directory tree, select-all/clear, path bar, Rename button + dialogs | ✅ done |
 | 6 | Modifier panels: all six with live preview + active indicators (✓/✗) | ✅ done |
 | 7 | i18n: German + English, runtime switcher, system-locale auto-detect | ✅ done |
-| 8 | Polish: dark mode, keyboard shortcuts, drag-and-drop, empty states, error handling | ⬜ next |
+| 8 | Polish: drag-and-drop reordering (ModifierCard), empty states, error handling done; dark mode + keyboard shortcuts still open | 🟡 partial |
 | 9 | CI: GitHub Actions (dev pipeline, automated bump + tag on master, 3-OS release builds) | ✅ done |
 | 10 | Folder editing: directories are renamable extension-less entries (engine + typed `/api/list` + `dirs` payload), Files/Directories view toggles, type badges, tree label refresh | ✅ done |
 | 11 | Dot-file fix: leading-dot names (`.bashrc`) are extension-less — the whole name is the base (`splitext` convention), all modifiers work | ✅ done |
