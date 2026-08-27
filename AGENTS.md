@@ -54,7 +54,9 @@ The order still applies to **all files uniformly** (there is no per-file order).
 
 Only the **base name** is ever modified. The extension (everything from the last `.`
 onward, dot included) is preserved and re-appended on rename. Files with no dot have
-an empty extension; a leading-dot name like `.bashrc` yields an empty base.
+an empty extension. A *leading* dot is not an extension: dot-files like `.bashrc`
+are extension-less (whole name is the base) — the ``os.path.splitext`` convention;
+`.hidden.tar` still splits at its last real dot (base `.hidden`).
 
 **Directories are extension-less**: a `RenameFile` flagged `is_dir=True` keeps
 `ext = ""` no matter what (a directory named `backup.tar` renames to
@@ -156,6 +158,13 @@ The original had a few quirks. This rebuild makes explicit choices:
   live in the frontend store (with `treeVersion`), deliberately **not** in
   `defaultConfig()`/`sanitizeConfig()`/the backend recipe: they are presentation,
   not part of the rename pipeline, and are per-session (no persistence).
+- **Dot-files are extension-less — FIXED.** The original (and this port's first cut)
+  treated the leading dot of `.bashrc` as the extension delimiter, leaving an *empty*
+  base — and since every modifier operates on the base, dot-files could never be
+  renamed at all. Now a dot at index 0 is not an extension (matches
+  `os.path.splitext`): `.bashrc` is fully renameable (Replace `.bashrc`→`.zshrc`,
+  Case, Add, Remove, Counting all work), while `.hidden.tar` still splits at its last
+  real dot (base `.hidden`, ext `.tar`).
 
 ---
 
@@ -189,7 +198,7 @@ arenamer/
 ├── .github/workflows/         # GitHub Actions: ci.yml (dev), release.yml (bump+tag), build.yml (3-OS releases)
 └── tests/
     └── backend/
-        ├── test_engine.py     # engine suite (116 tests) — modifiers, pipeline order (incl. custom), directories, edge cases
+        ├── test_engine.py     # engine suite (127 tests) — modifiers, pipeline order (incl. custom), directories, dot-files, edge cases
         └── test_api.py        # API suite (17 tests) — list/dirs/preview/check/rename over HTTP (incl. typed entries + dirs)
 ```
 
@@ -414,6 +423,7 @@ Artifacts are unsigned (Gatekeeper/SmartScreen notes from the Packaging section 
 | 8 | Polish: dark mode, keyboard shortcuts, drag-and-drop, empty states, error handling | ⬜ next |
 | 9 | CI: GitHub Actions (dev pipeline, automated bump + tag on master, 3-OS release builds) | ✅ done |
 | 10 | Folder editing: directories are renamable extension-less entries (engine + typed `/api/list` + `dirs` payload), Files/Directories view toggles, type badges, tree label refresh | ✅ done |
+| 11 | Dot-file fix: leading-dot names (`.bashrc`) are extension-less — the whole name is the base (`splitext` convention), all modifiers work | ✅ done |
 
 ### Conventions for future work
 - CI reuses `do` and `build/build.py`: keep `do` stdlib-only and the build orchestrator

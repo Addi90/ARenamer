@@ -19,14 +19,17 @@ from typing import Optional
 def split_name(name: str) -> tuple[str, str]:
     """Split a filename into (base, ext) at the *last* dot.
 
-    Mirrors ``RenameFile`` in renamefile.cpp:
-      - if there is a dot, base = everything before it, ext = from the dot onward
-        (the extension *includes* its leading dot, e.g. ``".txt"``).
-      - a file like ``".bashrc"`` yields base="" and ext=".bashrc" (dot at index 0).
-      - a file with no dot yields base=name and ext="".
+    - if there is a dot, base = everything before it, ext = from the dot onward
+      (the extension *includes* its leading dot, e.g. ``".txt"``).
+    - a *leading* dot (index 0) does not start an extension: dot-files like
+      ``".bashrc"`` are extension-less, base = the whole name, ext = "" — the
+      same convention as Python's ``os.path.splitext``. (The whole name must be
+      the base or no modifier can ever change such a name.)
+    - ``".hidden.tar"`` still splits at the last *real* dot: base=".hidden".
+    - a file with no dot yields base=name and ext="".
     """
     dot = name.rfind(".")
-    if dot > -1:
+    if dot > 0:
         return name[:dot], name[dot:]
     return name, ""
 
