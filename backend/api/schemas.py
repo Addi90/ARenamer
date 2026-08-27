@@ -14,7 +14,14 @@ from pydantic import BaseModel, Field
 # --- Directory / file browsing --------------------------------------------- #
 
 class FileEntry(BaseModel):
+    """One entry in a directory listing.
+
+    ``type`` is ``"file"`` or ``"dir"``; directory entries report ``size: 0``.
+    The client decides which types to show (view toggles) and which to select.
+    """
+
     name: str
+    type: str = "file"
     size: int = 0
     mtime: float = 0.0
 
@@ -38,6 +45,7 @@ class DirsResponse(BaseModel):
 
 class PreviewItem(BaseModel):
     name: str
+    type: str = "file"
     new_base: str
     ext: str
     full_new_name: str
@@ -47,6 +55,8 @@ class PreviewItem(BaseModel):
 class PreviewRequest(BaseModel):
     path: str = ""
     files: list[str] = Field(default_factory=list)
+    # Names in ``files`` that are directories (extension-less rename entries).
+    dirs: list[str] = Field(default_factory=list)
     config: dict = Field(default_factory=dict)
 
 
@@ -60,6 +70,7 @@ class PreviewResponse(BaseModel):
 class CheckRequest(BaseModel):
     path: str = ""
     files: list[str] = Field(default_factory=list)
+    dirs: list[str] = Field(default_factory=list)
     config: dict = Field(default_factory=dict)
 
 
@@ -73,6 +84,7 @@ class CheckResponse(BaseModel):
 class RenameRequest(BaseModel):
     path: str = ""
     files: list[str] = Field(default_factory=list)
+    dirs: list[str] = Field(default_factory=list)
     config: dict = Field(default_factory=dict)
 
 
