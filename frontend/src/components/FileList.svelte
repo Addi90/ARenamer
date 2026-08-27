@@ -1,12 +1,19 @@
 <script>
-  import { state, toggleSelect, selectAll, clearSelection } from "../lib/state/store.svelte.js";
+  import {
+    state, toggleSelect, selectAll, clearSelection, setShowFiles, setShowDirs,
+  } from "../lib/state/store.svelte.js";
   import { t } from "../lib/i18n/index.svelte.js";
 
   // Optional actions slot (Svelte 5 function-prop syntax) — e.g. the Rename button.
   let { actions } = $props();
 
+  // Entries rendered given the view toggles (default: files only). Hidden entries
+  // are never selectable, so the table, header checkbox and select-all all key
+  // off this derived list instead of state.files.
+  const visible = $derived(state.files.filter((f) => (f.type === "dir" ? state.showDirs : state.showFiles)));
+
   // Header checkbox reflects the selection; clicking it selects all / clears.
-  const allSelected = $derived(state.files.length > 0 && state.selection.length === state.files.length);
+  const allSelected = $derived(visible.length > 0 && state.selection.length === visible.length);
 
   function onHeaderToggle(e) {
     e.currentTarget.checked ? selectAll() : clearSelection();
@@ -20,13 +27,22 @@
 
 <div class="filelist">
   <div class="toolbar">
+    <label class="toggle">
+      <input type="checkbox" checked={state.showFiles} onchange={(e) => setShowFiles(e.currentTarget.checked)} />
+      {t("fileList.toggleFiles")}
+    </label>
+    <label class="toggle">
+      <input type="checkbox" checked={state.showDirs} onchange={(e) => setShowDirs(e.currentTarget.checked)} />
+      {t("fileList.toggleDirs")}
+    </label>
+    <span class="divider"></span>
     <button onclick={selectAll}>{t("fileList.selectAll")}</button>
     <button onclick={clearSelection} disabled={state.selection.length === 0}>{t("fileList.clear")}</button>
     <span class="spacer"></span>
     {@render actions?.()}
   </div>
 
-  <div class="table-wrap" class:empty={state.files.length === 0}>
+  <div class="table-wrap" class:empty={visible.length === 0}>
     <table class="files">
       <thead>
         <tr>
@@ -38,7 +54,7 @@
         </tr>
       </thead>
       <tbody>
-        {#each state.files as file (file.name)}
+        {#each visible as file (file.name)}
           {@const selected = state.selection.includes(file.name)}
           {@const prev = state.previews[file.name]}
           {@const duplicate = state.duplicateNames.includes(file.name)}
@@ -46,13 +62,16 @@
             <td class="col-check">
               <input type="checkbox" checked={selected} onclick={onCheckboxClick} onchange={() => toggleSelect(file.name)} />
             </td>
-            <td class="col-name" title={file.name}>{file.name}</td>
+            <td class="col-name" title={file.name}>
+              {#if file.type === "dir"}<span class="badge">{t("fileList.typeDir")}</span>{/if}
+              {file.name}
+            </td>
             <td class="col-new" class:changed={prev?.changed} class:muted={!selected} title={prev ? prev.full_new_name : file.name}>
               {prev ? prev.full_new_name : file.name}{duplicate ? " ⚠" : ""}
             </td>
           </tr>
         {/each}
-        {#if state.files.length === 0}
+        {#if visible.length === 0}
           <tr class="empty">
             <td colspan="3">{state.busy ? t("common.loading") : t("fileList.empty")}</td>
           </tr>
@@ -67,6 +86,9 @@
   .filelist { display: flex; flex-direction: column; min-height: 0; height: 100%; }
 
   .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .toolbar .toggle { display: flex; align-items: center; gap: 4px; font-size: 0.85rem; color: #374151; cursor: pointer; }
+  .toolbar .toggle input { margin: 0; }
+  .toolbar .divider { width: 1px; height: 18px; background: #e5e7eb; }
   .toolbar button { padding: 6px 12px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
   .toolbar button:hover:not(:disabled) { background: #f3f4f6; }
   .toolbar button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -116,7 +138,12 @@
   tr.duplicate:hover td { background: #fadbd8; }
 
   .col-check { width: 28px; text-align: center; }
-  .col-name { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .badge {
+    display: inline-block; margin-right: 6px; padding: 0 5px;
+    font-size: 0.7rem; line-height: 15px; border-radius: 8px;
+    background: #eef4ff; color: #1d4ed8; border: 1px solid #c7d8fe;
+  }
+  .col-name { font-family: ui-monospace, "SF Mono", Menlo, monospace; white-space: nowrap; }
   .col-new { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
   .col-new.changed { color: #15803d; font-weight: 600; }
   .col-new.muted { color: #b6bcc6; }

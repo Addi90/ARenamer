@@ -1,5 +1,5 @@
 <script>
-  import { state, checkDuplicates, performRename, loadDir, showDialog } from "../lib/state/store.svelte.js";
+  import { state, checkDuplicates, performRename, loadDir, showDialog, bumpTreeVersion } from "../lib/state/store.svelte.js";
   import { t } from "../lib/i18n/index.svelte.js";
 
   const disabled = $derived(state.selection.length === 0 || state.renaming);
@@ -81,6 +81,8 @@
 
     // Re-list the directory — names have changed (loadDir clears selection + duplicates).
     await loadDir(state.currentPath);
+    // Let the directory tree refresh the labels of any renamed directories.
+    if (result.renamed > 0) bumpTreeVersion();
   }
 </script>
 

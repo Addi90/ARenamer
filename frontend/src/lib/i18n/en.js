@@ -30,6 +30,7 @@ export const en = {
   "fileList.clear": "Clear",
   "fileList.toggleFiles": "Files",
   "fileList.toggleDirs": "Directories",
+  "fileList.typeDir": "dir",
   "fileList.name": "Name",
   "fileList.newName": "New Name",
   "fileList.empty": "No entries in this directory.",
