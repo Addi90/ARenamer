@@ -51,8 +51,12 @@ class TestSplitName:
         assert split_name("README") == ("README", "")
 
     def test_leading_dot_hidden_file(self):
-        # dot at index 0 -> empty base, whole name is the "extension" (matches Qt)
-        assert split_name(".bashrc") == ("", ".bashrc")
+        # dot at index 0 is NOT an extension (os.path.splitext convention) —
+        # the whole name is the base so modifiers can actually change it
+        assert split_name(".bashrc") == (".bashrc", "")
+
+    def test_leading_dot_with_real_extension(self):
+        assert split_name(".hidden.tar") == (".hidden", ".tar")
 
     def test_multiple_dots(self):
         assert split_name("a.b.c") == ("a.b", ".c")
@@ -291,10 +295,11 @@ class TestCase:
         compute([f], Config(case=CaseConfig(enabled=True, mode="snake")))
         assert f.new_base == "x_m_l_http_request"
 
-    def test_word_mode_empty_base(self):
-        f = one(".bashrc")  # leading-dot name -> empty base
+    def test_dot_file_word_mode(self):
+        # leading dot is part of the name, not a delimiter; all-lower stays as-is
+        f = one(".bashrc")
         compute([f], Config(case=CaseConfig(enabled=True, mode="snake")))
-        assert f.new_base == ""
+        assert f.new_base == ".bashrc"
 
 
 # --------------------------------------------------------------------------- #
@@ -847,3 +852,77 @@ class TestDirectories:
         # nothing got clobbered
         assert (tmp_path / "source").is_dir()
         assert (tmp_path / "target.txt").is_file()
+
+
+# --------------------------------------------------------------------------- #
+# Dot-files (hidden files on Linux/macOS)
+# --------------------------------------------------------------------------- #
+
+class TestDotFiles:
+    """Dot-files are extension-less: the whole name is the base (the
+    ``os.path.splitext`` convention), so every modifier can change them.
+
+    Before the fix, the leading dot was treated as the extension delimiter,
+    leaving an empty base — and since all modifiers operate on the base,
+    dot-files like ``.bashrc`` could never be renamed.
+    """
+
+    def test_replace_dot_file(self):
+        f = one(".bashrc")
+        compute([f], Config(replace=ReplaceConfig(enabled=True, search="bash", replace="zsh")))
+        assert f.new_full_name == ".zshrc"
+
+    def test_case_dot_file(self):
+        f = one(".BashRC")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="lower")))
+        assert f.new_full_name == ".bashrc"
+
+    def test_add_suffix_dot_file(self):
+        f = one(".bashrc")
+        compute([f], Config(add=AddConfig(enabled=True, suffix="-old")))
+        assert f.new_base == ".bashrc-old"
+
+    def test_remove_front_dot_file(self):
+        f = one(".bashrc")
+        compute([f], Config(remove=RemoveConfig(enabled=True, front=1)))
+        assert f.new_base == "bashrc"
+
+    def test_counting_dot_file(self):
+        f = one(".gitignore")
+        compute([f], Config(counting=CountingConfig(enabled=True, position="suffix", start=1, padding=2)))
+        assert f.new_base == ".gitignore01"
+
+    def test_hidden_file_with_real_extension(self):
+        f = one(".hidden.tar")
+        compute([f], Config(replace=ReplaceConfig(enabled=True, search="hidden", replace="data")))
+        assert (f.new_base, f.ext) == (".data", ".tar")
+        assert f.new_full_name == ".data.tar"
+
+    def test_ifthen_condition_sees_dot_file_name(self):
+        f = one(".gitignore")
+        cfg = Config(ifthen=IfThenConfig(enabled=True, expression="git", action="prefix", string="ignore_"))
+        compute([f], cfg)
+        assert f.new_base == "ignore_.gitignore"
+
+    def test_preview_dot_file(self):
+        cfg = Config(replace=ReplaceConfig(enabled=True, search="bash", replace="zsh"))
+        p = preview([one(".bashrc")], cfg)
+        assert p[".bashrc"]["full_new_name"] == ".zshrc"
+        assert p[".bashrc"]["changed"] is True
+
+    def test_perform_rename_dot_file(self, tmp_path):
+        (tmp_path / ".bashrc").write_text("export PATH=/bin")
+        f = one(".bashrc", str(tmp_path))
+        cfg = Config(replace=ReplaceConfig(enabled=True, search="bash", replace="zsh"))
+        res = perform_rename([f], cfg)
+        assert res == {"renamed": 1, "errors": []}
+        assert (tmp_path / ".zshrc").read_text() == "export PATH=/bin"
+        assert not (tmp_path / ".bashrc").exists()
+
+    def test_duplicate_check_dot_file_target(self, tmp_path):
+        (tmp_path / ".bashrc").write_text("old")
+        (tmp_path / ".profile").write_text("other")
+        f = one(".profile", str(tmp_path))
+        cfg = Config(replace=ReplaceConfig(enabled=True, search="profile", replace="bashrc"))
+        dups = find_duplicates([f], cfg)
+        assert dups == [".profile"]  # would clobber the existing .bashrc
