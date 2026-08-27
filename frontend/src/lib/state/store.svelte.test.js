@@ -32,6 +32,15 @@ const FILES = [
   { name: "c.md", size: 3, mtime: 0 },
 ];
 
+// A mixed listing: entries carry `type` ("file" | "dir") since /api/list
+// returns both kinds; the view toggles decide which are rendered.
+const MIXED = [
+  { name: "a.txt", type: "file", size: 1, mtime: 0 },
+  { name: "Photos", type: "dir", size: 0, mtime: 0 },
+  { name: "b.log", type: "file", size: 2, mtime: 0 },
+  { name: "Videos", type: "dir", size: 0, mtime: 0 },
+];
+
 beforeEach(() => {
   vi.resetModules();
 });
@@ -187,5 +196,91 @@ describe("api-backed flows (mocked api)", () => {
     await performRename();
     expect(api.rename).toHaveBeenCalledTimes(1);
     expect(state.renaming).toBe(false);
+  });
+});
+
+describe("view toggles (files / directories)", () => {
+  it("defaults: files shown, dirs hidden (historical view)", async () => {
+    const { state } = await freshStore();
+    expect(state.showFiles).toBe(true);
+    expect(state.showDirs).toBe(false);
+  });
+
+  it("selectAll only selects the visible entries", async () => {
+    const { state, selectAll } = await freshStore();
+    state.files = [...MIXED];
+    selectAll();
+    expect(state.selection).toEqual(["a.txt", "b.log"]); // dirs hidden by default
+  });
+
+  it("selectAll includes dirs once they are shown", async () => {
+    const { state, setShowDirs, selectAll } = await freshStore();
+    state.files = [...MIXED];
+    setShowDirs(true);
+    selectAll();
+    expect(state.selection).toEqual(["a.txt", "Photos", "b.log", "Videos"]);
+  });
+
+  it("enabling a type does not change the existing selection", async () => {
+    const { state, setShowDirs, selectAll } = await freshStore();
+    state.files = [...MIXED];
+    selectAll();
+    setShowDirs(true);
+    expect(state.selection).toEqual(["a.txt", "b.log"]); // untouched
+  });
+
+  it("disabling a type prunes it from selection, previews and duplicates", async () => {
+    const { state, setShowDirs, setShowFiles, selectAll } = await freshStore();
+    state.files = [...MIXED];
+    setShowDirs(true);
+    selectAll();
+    state.previews = { "a.txt": {}, Photos: {}, "b.log": {}, Videos: {} };
+    state.duplicateNames = ["Photos"];
+
+    setShowFiles(false);
+    expect(state.selection).toEqual(["Photos", "Videos"]);
+    expect(Object.keys(state.previews).sort()).toEqual(["Photos", "Videos"]);
+    expect(state.duplicateNames).toEqual(["Photos"]);
+
+    setShowDirs(false); // prune the last visible type
+    expect(state.selection).toEqual([]);
+    expect(state.previews).toEqual({});
+    expect(state.duplicateNames).toEqual([]);
+  });
+
+  it("api payloads carry the dirs field (selected dirs only)", async () => {
+    const { state, toggleSelect, refreshPreview } = await freshStore();
+    state.files = [...MIXED];
+    state.currentPath = "/tmp/somewhere";
+    toggleSelect("a.txt");
+    toggleSelect("Photos");
+    api.preview.mockResolvedValue({ previews: {} });
+
+    await refreshPreview();
+    await new Promise((r) => setTimeout(r, 250));
+    const payload = api.preview.mock.calls[0][0];
+    expect(payload.files).toEqual(["a.txt", "Photos"]); // list order
+    expect(payload.dirs).toEqual(["Photos"]); // only the directory names
+  });
+
+  it("performRename payload carries the dirs field", async () => {
+    const { state, toggleSelect, performRename } = await freshStore();
+    state.files = [...MIXED];
+    state.currentPath = "/tmp/somewhere";
+    toggleSelect("b.log");
+    toggleSelect("Videos");
+    api.rename.mockResolvedValue({ renamed: 0, errors: [] });
+
+    await performRename();
+    const payload = api.rename.mock.calls[0][0];
+    expect(payload.files).toEqual(["b.log", "Videos"]);
+    expect(payload.dirs).toEqual(["Videos"]);
+  });
+
+  it("bumpTreeVersion increments treeVersion", async () => {
+    const { state, bumpTreeVersion } = await freshStore();
+    const before = state.treeVersion;
+    bumpTreeVersion();
+    expect(state.treeVersion).toBe(before + 1);
   });
 });
