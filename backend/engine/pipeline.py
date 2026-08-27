@@ -69,13 +69,23 @@ def compute(files: list[RenameFile], config: Config) -> list[RenameFile]:
     return files
 
 
-def build_files(path: str, names: list[str]) -> list[RenameFile]:
-    """Build RenameFile objects from a directory path + filenames.
+def build_files(path: str, names: list[str],
+                dirs: list[str] | set[str] | None = None) -> list[RenameFile]:
+    """Build RenameFile objects from a directory path + entry names.
 
     ``row`` is the position in the provided list, so numbering/preview follow the
     order the UI sent (on-screen list order).
+
+    ``dirs`` (optional) is the subset of ``names`` that are directories; those
+    entries are marked ``is_dir`` and are extension-less (the whole name is the
+    base). Any name not listed in ``dirs`` stays a regular file, so callers that
+    pass only files (no ``dirs``) keep the historical behavior exactly.
     """
-    return [RenameFile(name=n, path=path, row=i) for i, n in enumerate(names)]
+    dir_set = set(dirs or ())
+    return [
+        RenameFile(name=n, path=path, row=i, is_dir=n in dir_set)
+        for i, n in enumerate(names)
+    ]
 
 
 def preview(files: list[RenameFile], config: Config) -> dict[str, dict]:
@@ -90,6 +100,7 @@ def preview(files: list[RenameFile], config: Config) -> dict[str, dict]:
     for f in files:
         result[f.name] = {
             "name": f.name,
+            "type": "dir" if f.is_dir else "file",
             "new_base": f.new_base,
             "ext": f.ext,
             "full_new_name": f.new_full_name,
@@ -99,12 +110,15 @@ def preview(files: list[RenameFile], config: Config) -> dict[str, dict]:
 
 
 def find_duplicates(files: list[RenameFile], config: Config) -> list[str]:
-    """Return the original names of files whose resulting name already exists on disk.
+    """Return the original names of entries whose resulting name already exists on disk.
 
-    Mirrors ``Renamer::checkForDuplicates``: re-run the pipeline, then collect any file
-    whose new name (path/new_base+ext) exists on disk, skipping files whose base name is
-    unchanged. The API uses this to (a) show a blocking warning and (b) highlight the
-    offending rows before a rename.
+    Mirrors ``Renamer::checkForDuplicates``: re-run the pipeline, then collect any entry
+    (file or directory) whose new name (path/new_base+ext) exists on disk, skipping
+    entries whose base name is unchanged. The existence check is cross-type by design:
+    ``os.path.exists`` is true whether the target is a file or a directory, so
+    dir→existing-file, dir→existing-dir and file→existing-dir collisions are all caught.
+    The API uses this to (a) show a blocking warning and (b) highlight the offending
+    rows before a rename.
     """
     compute(files, config)
     dups: list[str] = []
@@ -123,11 +137,12 @@ def check_duplicates(files: list[RenameFile], config: Config) -> int:
 
 
 def perform_rename(files: list[RenameFile], config: Config) -> dict:
-    """Run the pipeline and rename files on disk. Returns a summary.
+    """Run the pipeline and rename entries (files and directories) on disk.
 
-    Mirrors ``Renamer::save`` + ``RenameFile::renameFile``: only files whose new name
-    differs from the current one and that still exist are renamed. Per-file OS errors are
-    collected rather than raised, so one bad file doesn't abort the rest.
+    Mirrors ``Renamer::save`` + ``RenameFile::renameFile``: only entries whose new name
+    differs from the current one and that still exist are renamed. ``os.rename`` works
+    for both files and directories. Per-entry OS errors are collected rather than
+    raised, so one bad entry doesn't abort the rest.
 
     Returns ``{"renamed": int, "errors": [{"name", "error"}, ...]}``.
     """

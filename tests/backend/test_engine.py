@@ -16,6 +16,8 @@ from backend.engine import (
     build_files,
     check_duplicates,
     compute,
+    find_duplicates,
+    perform_rename,
     preview,
 )
 from backend.engine.models import (
@@ -680,3 +682,168 @@ class TestConfigSerialization:
     def test_null_custom_date_stays_none(self):
         cfg = Config.from_dict({"date": {"enabled": True, "source": "custom", "custom_date": None}})
         assert cfg.date.custom_date is None
+
+
+# --------------------------------------------------------------------------- #
+# Directories as rename entries (folder editing)
+# --------------------------------------------------------------------------- #
+
+def dirm(name: str, path: str = "") -> RenameFile:
+    return RenameFile(name=name, path=path, row=0, is_dir=True)
+
+
+class TestDirectories:
+    def test_dir_without_dot(self):
+        f = dirm("photos")
+        assert f.base == "photos"
+        assert f.ext == ""
+        assert f.is_dir is True
+
+    def test_dir_with_dot_keeps_dot_in_base(self):
+        # A dot in a directory name is part of the name, not an extension.
+        f = dirm("backup.tar")
+        assert f.base == "backup.tar"
+        assert f.ext == ""
+
+    def test_dir_with_leading_dot(self):
+        f = dirm(".cache")
+        assert f.base == ".cache"
+        assert f.ext == ""
+
+    def test_file_rule_unchanged(self):
+        f = RenameFile(name="backup.tar", row=0)
+        assert f.is_dir is False
+        assert f.base == "backup" and f.ext == ".tar"
+
+    def test_build_files_marks_only_named_dirs(self):
+        files = build_files(
+            "/tmp/x", ["a.txt", "Photos", "b.log", "Videos"],
+            dirs=["Photos", "Videos"],
+        )
+        assert [f.name for f in files] == ["a.txt", "Photos", "b.log", "Videos"]
+        assert [f.row for f in files] == [0, 1, 2, 3]
+        assert [f.is_dir for f in files] == [False, True, False, True]
+        assert files[0].base == "a" and files[0].ext == ".txt"
+        assert files[1].base == "Photos" and files[1].ext == ""
+
+    def test_build_files_accepts_a_set_and_defaults_to_files(self):
+        files = build_files("/tmp/x", ["a.txt", "Photos"], dirs={"Photos"})
+        assert files[0].is_dir is False and files[1].is_dir is True
+        assert build_files("/tmp/x", ["a.txt"])[0].is_dir is False
+
+    def test_add_prefix_on_dir_is_extension_less(self):
+        f = dirm("backup.tar")
+        compute([f], Config(add=AddConfig(enabled=True, prefix="x_")))
+        assert f.new_full_name == "x_backup.tar"
+
+    def test_case_modifier_on_dir(self):
+        f = dirm("My Photos")
+        compute([f], Config(case=CaseConfig(enabled=True, mode="lower")))
+        assert f.new_full_name == "my photos"
+
+    def test_remove_acts_on_full_dir_name(self):
+        # A file keeps its extension while removing; a dir's whole name is base.
+        f = dirm("2024-photos.v2")
+        compute([f], Config(remove=RemoveConfig(enabled=True, front=5)))
+        assert f.new_full_name == "photos.v2"
+
+    def test_ifthen_condition_tests_full_dir_name(self):
+        f = dirm("backup.tar")
+        cfg = Config(ifthen=IfThenConfig(
+            enabled=True, expression=".tar", action="prefix", string="x_",
+        ))
+        compute([f], cfg)
+        assert f.new_full_name == "x_backup.tar"
+
+    def test_preview_reports_dir_type(self):
+        f = dirm("Photos")
+        res = preview([f], Config(add=AddConfig(enabled=True, suffix="-x")))
+        item = res["Photos"]
+        assert item["type"] == "dir"
+        assert item["ext"] == ""
+        assert item["full_new_name"] == "Photos-x"
+        assert item["changed"] is True
+
+    def test_numbering_spans_mixed_files_and_dirs(self):
+        # One combined sequence follows the on-screen list order across both types.
+        files = build_files(
+            "/tmp/x", ["b.log", "Photos", "a.txt", "Videos"],
+            dirs=["Photos", "Videos"],
+        )
+        cfg = Config(counting=CountingConfig(enabled=True, position="suffix", start=1, padding=2))
+        compute(files, cfg)
+        by_name = {f.name: f.new_full_name for f in files}
+        # files keep the extension after the suffix number; dirs (extension-less)
+        # simply append it
+        assert by_name["b.log"] == "b01.log"
+        assert by_name["Photos"] == "Photos02"
+        assert by_name["a.txt"] == "a03.txt"
+        assert by_name["Videos"] == "Videos04"
+
+    def test_date_modifier_reads_dir_mtime(self, tmp_path):
+        d = tmp_path / "Photos"
+        d.mkdir()
+        os.utime(d, (1700000000, 1700000000))  # fixed mtime
+        f = dirm("Photos", str(tmp_path))
+        cfg = Config(date=DateConfig(enabled=True, source="modified", format="ymd"))
+        compute([f], cfg)
+        assert f.new_base.startswith("Photos") and len(f.new_base) == len("Photos2023-11-14")
+
+    def test_find_duplicates_detects_dir_into_existing_dir(self, tmp_path):
+        (tmp_path / "target").mkdir()
+        f = dirm("source", str(tmp_path))
+        cfg = Config(replace=ReplaceConfig(enabled=True, search="source", replace="target"))
+        assert find_duplicates([f], cfg) == ["source"]
+        assert check_duplicates([f], cfg) == 1
+
+    def test_find_duplicates_detects_dir_into_existing_file(self, tmp_path):
+        (tmp_path / "target.txt").write_text("x")
+        f = dirm("source", str(tmp_path))
+        cfg = Config(replace=ReplaceConfig(enabled=True, search="source", replace="target.txt"))
+        assert find_duplicates([f], cfg) == ["source"]
+
+    def test_find_duplicates_detects_file_into_existing_dir(self, tmp_path):
+        (tmp_path / "target").mkdir()
+        f = RenameFile(name="source", path=str(tmp_path), row=0)
+        cfg = Config(replace=ReplaceConfig(enabled=True, search="source", replace="target"))
+        assert find_duplicates([f], cfg) == ["source"]
+
+    def test_find_duplicates_skips_unchanged_dir(self, tmp_path):
+        (tmp_path / "Photos").mkdir()
+        f = dirm("Photos", str(tmp_path))
+        assert find_duplicates([f], Config()) == []
+
+    def test_perform_rename_renames_dir_with_content(self, tmp_path):
+        d = tmp_path / "Photos"
+        d.mkdir()
+        (d / "a.jpg").write_text("x")
+        f = dirm("Photos", str(tmp_path))
+        cfg = Config(add=AddConfig(enabled=True, prefix="archived_"))
+        res = perform_rename([f], cfg)
+        assert res == {"renamed": 1, "errors": []}
+        assert (tmp_path / "archived_Photos" / "a.jpg").exists()
+        assert not (tmp_path / "Photos").exists()
+        # set_name re-derives the in-memory state; the dir stays extension-less.
+        assert f.name == "archived_Photos"
+        assert f.base == "archived_Photos" and f.ext == ""
+        assert f.is_dir is True
+
+    def test_perform_rename_unchanged_dir_is_noop(self, tmp_path):
+        d = tmp_path / "Photos"
+        d.mkdir()
+        f = dirm("Photos", str(tmp_path))
+        res = perform_rename([f], Config())
+        assert res == {"renamed": 0, "errors": []}
+        assert d.exists()
+
+    def test_perform_rename_dir_onto_existing_file_collects_error(self, tmp_path):
+        (tmp_path / "target.txt").write_text("x")
+        (tmp_path / "source").mkdir()
+        f = dirm("source", str(tmp_path))
+        cfg = Config(replace=ReplaceConfig(enabled=True, search="source", replace="target.txt"))
+        res = perform_rename([f], cfg)
+        assert res["renamed"] == 0
+        assert res["errors"][0]["name"] == "source"
+        # nothing got clobbered
+        assert (tmp_path / "source").is_dir()
+        assert (tmp_path / "target.txt").is_file()

@@ -31,20 +31,34 @@ def split_name(name: str) -> tuple[str, str]:
     return name, ""
 
 
+def _split_entry(name: str, is_dir: bool) -> tuple[str, str]:
+    """Split an entry name into (base, ext), accounting for its type.
+
+    Files split at the last dot (see :func:`split_name`). Directories are
+    *extension-less*: the whole name is the base and ``ext`` is always "" — a
+    dot in a directory name (e.g. ``backup.tar``) is part of the name, not an
+    extension, so the entire name is renamed.
+    """
+    if is_dir:
+        return name, ""
+    return split_name(name)
+
+
 @dataclass
 class RenameFile:
-    """One file participating in a rename batch."""
+    """One entry (a file or directory) participating in a rename batch."""
 
-    name: str                 # original full filename, e.g. "photo.txt"
-    path: str = ""            # directory the file lives in (no trailing slash)
+    name: str                 # original full name, e.g. "photo.txt"
+    path: str = ""            # directory the entry lives in (no trailing slash)
     row: int = 0              # list order index; drives deterministic numbering
+    is_dir: bool = False      # True = directory entry (whole name is the base)
 
     base: str = field(default="", init=False)
     ext: str = field(default="", init=False)
     new_base: str = field(default="", init=False)
 
     def __post_init__(self) -> None:
-        self.base, self.ext = split_name(self.name)
+        self.base, self.ext = _split_entry(self.name, self.is_dir)
         self.new_base = self.base
 
     @property
@@ -53,7 +67,7 @@ class RenameFile:
 
     @property
     def new_full_name(self) -> str:
-        """New filename including the (always preserved) extension."""
+        """New full name including the extension (always preserved; empty for dirs)."""
         return self.new_base + self.ext
 
     @property
@@ -64,10 +78,12 @@ class RenameFile:
         """Adopt a new on-disk name and re-derive base/ext/new_base from it.
 
         Called after a successful rename so the in-memory object matches reality
-        (a subsequent preview of an already-renamed file correctly shows no change).
+        (a subsequent preview of an already-renamed entry correctly shows no
+        change). The entry type is unchanged: a renamed directory stays
+        extension-less.
         """
         self.name = newname
-        self.base, self.ext = split_name(newname)
+        self.base, self.ext = _split_entry(newname, self.is_dir)
         self.new_base = self.base
 
 
