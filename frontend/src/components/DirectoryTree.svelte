@@ -92,6 +92,34 @@
     appState.currentPath; // track
     requestSync();
   });
+
+  // Re-fetch the children of every loaded node so its labels are current.
+  // Walks bottom-up so a renamed directory (a child of a loaded node) is
+  // refreshed even when the rename happened in a deeper directory.
+  async function refreshLoaded(node) {
+    if (!node) return;
+    for (const child of node.children || []) {
+      await refreshLoaded(child);
+    }
+    if (node.loaded && !node.loading) {
+      node.loading = true;
+      try {
+        const res = await api.listDirs(node.path);
+        node.children = res.dirs.map((d) => ({ name: d.name, path: d.path }));
+      } catch (e) {
+        appState.error = e.message || String(e);
+      } finally {
+        node.loading = false;
+      }
+    }
+  }
+
+  // The store bumps treeVersion after a successful rename — refreshed labels
+  // (a renamed directory is shown under its new name in the tree).
+  $effect(() => {
+    appState.treeVersion; // track
+    refreshLoaded(root);
+  });
 </script>
 
 <div class="tree" aria-label={t("tree.directories")}>

@@ -4,7 +4,7 @@
 export const en = {
   // header / path bar
   "app.title": "A-Renamer Tool",
-  "app.subtitle": "Select files, configure modifiers, preview the new names, then rename.",
+  "app.subtitle": "Select files and directories, configure modifiers, preview the new names, then rename.",
   "app.home": "Home",
   "app.homeTitle": "Open the home directory",
   "app.up": "Up",
@@ -28,9 +28,12 @@ export const en = {
   // file list
   "fileList.selectAll": "Select all",
   "fileList.clear": "Clear",
+  "fileList.toggleFiles": "Files",
+  "fileList.toggleDirs": "Directories",
+  "fileList.typeDir": "dir",
   "fileList.name": "Name",
   "fileList.newName": "New Name",
-  "fileList.empty": "No files in this directory.",
+  "fileList.empty": "No entries in this directory.",
 
   // directory tree
   "tree.directories": "Directories",
@@ -42,12 +45,12 @@ export const en = {
   "rename.button": "Rename",
   "rename.renaming": "Renaming…",
   "rename.dupTitle": "Warning",
-  "rename.dupMsg": "Found existing duplicate files for {n} new filename(s)!",
+  "rename.dupMsg": "Found existing entries for {n} new name(s)!",
   "rename.confirmTitle": "Rename",
-  "rename.confirmMsg": "Rename {n} File(s)?",
+  "rename.confirmMsg": "Rename {n} Item(s)?",
   "rename.successTitle": "Done",
-  "rename.successMsg": "Successfully renamed {n} File(s)!",
-  "rename.errorNote": "{n} file(s) could not be renamed.",
+  "rename.successMsg": "Successfully renamed {n} Item(s)!",
+  "rename.errorNote": "{n} item(s) could not be renamed.",
 
   // dialog buttons
   "dialog.ok": "Ok",
