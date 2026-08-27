@@ -123,7 +123,7 @@
         {/if}
       </div>
       <p class="hint">{t("modifiers.dragHint")}</p>
-      <section class="modifiers">
+      <section class="modifiers" role="list" aria-label={t("modifiers.title")}>
         {#each appState.config.pipeline_order as id, i (id)}
           {@const Comp = MODIFIERS[id]}
           <ModifierCard {id} index={i}>

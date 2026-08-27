@@ -74,10 +74,10 @@
   }
 </script>
 
-<div class="card" class:dragging class:over={slot !== null} bind:this={cardEl} draggable={false}
+<div class="card" role="listitem" class:dragging class:over={slot !== null} bind:this={cardEl} draggable={false}
      ondragstart={onDragStart} ondragend={endDrag} ondragover={onDragOver} ondragleave={onDragLeave} ondrop={onDrop}>
   <span class="marker" class:before={slot === 0} class:after={slot === 1} class:vert={horiz}></span>
-  <span class="grip" role="button" onmousedown={startDrag} title={t("modifiers.dragHint")} aria-label={t("modifiers.dragHint")}>⠿</span>
+  <span class="grip" role="button" tabindex={0} onmousedown={startDrag} title={t("modifiers.dragHint")} aria-label={t("modifiers.dragHint")}>⠿</span>
   {@render children()}
 </div>
 
