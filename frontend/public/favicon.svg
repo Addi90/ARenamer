@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="A-Renamer Tool">
+  <defs>
+    <linearGradient id="folder" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a855f7"/>
+      <stop offset="1" stop-color="#6d28d9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Folder: rounded tab + rounded body, all corners soft -->
+  <path
+    fill="url(#folder)"
+    d="M 88 84
+       H 180
+       Q 202 84 214 98
+       L 252 136
+       H 412
+       Q 456 136 456 180
+       V 380
+       Q 456 424 412 424
+       H 100
+       Q 56 424 56 380
+       V 116
+       Q 56 84 88 84
+       Z"
+  />
+
+  <!-- "A" in Helvetica Bold (glyph outline, pixel-identical on every platform) -->
+  <path
+    fill="#ffffff"
+    d="M 291.4 339.1 L 219.9 339.1 L 206.5 379.0 L 164.1 379.0 L 233.4 185.0 L 279.2 185.0 L 347.9 379.0 L 303.9 379.0 Z M 280.1 305.7 L 255.9 229.4 L 230.9 305.7 Z"
+  />
+</svg>
