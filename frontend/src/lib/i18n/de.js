@@ -5,7 +5,7 @@
 export const de = {
   // header / path bar
   "app.title": "A-Renamer Tool",
-  "app.subtitle": "Dateien auswählen, Modifikatoren konfigurieren, neue Namen in der Vorschau prüfen und dann umbenennen.",
+  "app.subtitle": "Dateien und Verzeichnisse auswählen, Modifikatoren konfigurieren, neue Namen in der Vorschau prüfen und dann umbenennen.",
   "app.home": "Home",
   "app.homeTitle": "Das Home-Verzeichnis öffnen",
   "app.up": "Hoch",
@@ -29,9 +29,12 @@ export const de = {
   // file list
   "fileList.selectAll": "Alle auswählen",
   "fileList.clear": "Auswahl aufheben",
+  "fileList.toggleFiles": "Dateien",
+  "fileList.toggleDirs": "Verzeichnisse",
+  "fileList.typeDir": "Ordner",
   "fileList.name": "Name",
   "fileList.newName": "Neuer Name",
-  "fileList.empty": "Keine Dateien in diesem Verzeichnis.",
+  "fileList.empty": "Keine Einträge in diesem Verzeichnis.",
 
   // directory tree
   "tree.directories": "Verzeichnisse",
@@ -43,12 +46,12 @@ export const de = {
   "rename.button": "Umbenennen",
   "rename.renaming": "Wird umbenannt…",
   "rename.dupTitle": "Warnung",
-  "rename.dupMsg": "Für {n} neue(n) Dateinamen bereits existierende Datei(en) mit selbem Namen gefunden!",
+  "rename.dupMsg": "Für {n} neue(n) Namen bereits existierende Einträge mit selbem Namen gefunden!",
   "rename.confirmTitle": "Umbenennen",
-  "rename.confirmMsg": "Benenne {n} Datei(en) um?",
+  "rename.confirmMsg": "Benenne {n} Element(e) um?",
   "rename.successTitle": "Fertig",
-  "rename.successMsg": "Erfolgreich {n} Datei(en) umbenannt!",
-  "rename.errorNote": "{n} Datei(en) konnten nicht umbenannt werden.",
+  "rename.successMsg": "Erfolgreich {n} Element(e) umbenannt!",
+  "rename.errorNote": "{n} Element(e) konnten nicht umbenannt werden.",
 
   // dialog buttons
   "dialog.ok": "OK",
