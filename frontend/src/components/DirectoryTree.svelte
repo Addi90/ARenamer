@@ -96,6 +96,8 @@
   // Re-fetch the children of every loaded node so its labels are current.
   // Walks bottom-up so a renamed directory (a child of a loaded node) is
   // refreshed even when the rename happened in a deeper directory.
+  // Entries whose name survives the rename keep their node object (expansion,
+  // loaded flag and subtree); only genuinely new/renamed entries start collapsed.
   async function refreshLoaded(node) {
     if (!node) return;
     for (const child of node.children || []) {
@@ -105,7 +107,10 @@
       node.loading = true;
       try {
         const res = await api.listDirs(node.path);
-        node.children = res.dirs.map((d) => ({ name: d.name, path: d.path }));
+        const prev = new Map((node.children || []).map((c) => [c.name, c]));
+        node.children = res.dirs.map((d) =>
+          prev.has(d.name) ? { ...prev.get(d.name), path: d.path } : { name: d.name, path: d.path }
+        );
       } catch (e) {
         appState.error = e.message || String(e);
       } finally {
@@ -116,9 +121,20 @@
 
   // The store bumps treeVersion after a successful rename — refreshed labels
   // (a renamed directory is shown under its new name in the tree).
+  //
+  // The effect must track *only* `treeVersion`: if the deep node reads inside
+  // `refreshLoaded` (children/loaded/loading) were tracked, every fetch's
+  // re-assignment would re-invalidate the effect — an endless re-fetch loop
+  // whose fresh node objects also collapse any user expansion (the tree would
+  // never show a level deeper than the first). So the refresh runs in a
+  // microtask (outside the effect body, hence untracked), gated on the version
+  // actually changing.
+  let lastTreeVersion = appState.treeVersion;
   $effect(() => {
-    appState.treeVersion; // track
-    refreshLoaded(root);
+    const v = appState.treeVersion; // only tracked read
+    if (v === lastTreeVersion) return;
+    lastTreeVersion = v;
+    queueMicrotask(() => refreshLoaded(root));
   });
 </script>
 
