@@ -11,6 +11,7 @@ export const de = {
   "app.up": "Hoch",
   "app.upTitle": "Das übergeordnete Verzeichnis öffnen",
   "app.open": "Öffnen",
+  "app.errorDismiss": "Fehler schließen",
 
   // language switcher (option labels stay in their own language)
   "lang.label": "Sprache",

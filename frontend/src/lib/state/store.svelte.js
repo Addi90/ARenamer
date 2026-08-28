@@ -77,6 +77,11 @@ export function goUp() {
   loadDir(p.split("/").slice(0, -1).join("/") || "/");
 }
 
+/** Clear the error banner (its dismiss button). The banner also clears itself on the next `loadDir`. */
+export function clearError() {
+  state.error = "";
+}
+
 // --- selection ------------------------------------------------------------- #
 
 export function toggleSelect(name) {

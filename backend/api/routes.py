@@ -15,6 +15,7 @@ re-checks for duplicates as a safety net and refuses (HTTP 409) rather than clob
 from __future__ import annotations
 
 import os
+import sys
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -42,6 +43,28 @@ def _require_dir(path: str) -> str:
     return path
 
 
+def _list_dir(path: str) -> list[str]:
+    """The entry names of ``path`` (lowercase-sorted), with a friendly error if unreadable.
+
+    A directory can exist yet be unreadable — macOS TCC blocks apps without the
+    right permission (e.g. an external volume), which used to surface as a raw
+    ``PermissionError`` traceback + opaque 500. Translate it into a 403 with an
+    actionable message the UI can show in its error banner.
+    """
+    try:
+        return sorted(os.listdir(path), key=str.lower)
+    except PermissionError:
+        hint = (
+            " On macOS, grant the app access to this disk "
+            "(System Settings → Privacy & Security → Full Disk Access)."
+            if sys.platform == "darwin"
+            else " Check the folder's permissions."
+        )
+        raise HTTPException(status_code=403, detail=f"Cannot read {path!r}: permission denied.{hint}")
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"Cannot read {path!r}: {e}")
+
+
 @router.get("/list", response_model=ListResponse)
 def list_files(path: str = Query(...)) -> ListResponse:
     """List the entries (files *and* subdirectories) in ``path``, sorted by name.
@@ -51,7 +74,7 @@ def list_files(path: str = Query(...)) -> ListResponse:
     """
     _require_dir(path)
     entries: list[FileEntry] = []
-    for name in sorted(os.listdir(path), key=str.lower):
+    for name in _list_dir(path):
         full = os.path.join(path, name)
         try:
             st = os.stat(full)
@@ -69,7 +92,7 @@ def list_dirs(path: str = Query(...)) -> DirsResponse:
     """List the immediate subdirectories of ``path`` (for tree navigation)."""
     _require_dir(path)
     entries: list[DirEntry] = []
-    for name in sorted(os.listdir(path), key=str.lower):
+    for name in _list_dir(path):
         if name in (".", ".."):
             continue
         full = os.path.join(path, name)

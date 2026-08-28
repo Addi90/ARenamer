@@ -10,6 +10,7 @@ export const en = {
   "app.up": "Up",
   "app.upTitle": "Open the parent directory",
   "app.open": "Open",
+  "app.errorDismiss": "Dismiss error",
 
   // language switcher (option labels stay in their own language)
   "lang.label": "Language",
