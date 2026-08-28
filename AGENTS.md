@@ -13,17 +13,18 @@ structured and built. Use it as the source of truth when adding features.
 
 ## 1. What this program is
 
-A desktop GUI for **bulk-renaming files**. The user:
+A desktop GUI for **bulk-renaming files and directories**. The user:
 
 1. Selects a directory (folder browser or built-in directory tree).
-2. Selects one or more files in it (multi-select).
-3. Configures zero or more **modifiers** (text operations) that transform each filename.
-4. Sees a **live preview** of every selected file's new name as they tweak modifiers.
+2. Selects one or more entries in it — files and/or directories (multi-select,
+   with Files/Directories show-hide toggles; default view shows files only).
+3. Configures zero or more **modifiers** (text operations) that transform each name.
+4. Sees a **live preview** of every selected entry's new name as they tweak modifiers.
 5. Clicks **Rename** to apply all transformations on disk (with duplicate + confirmation safeguards).
 
-Core value: batch rename with a composable set of text operations, instant per-file
-preview, and safe renaming. The UI is internationalized (German + English) with a
-runtime language switcher.
+Core value: batch rename with a composable set of text operations, instant per-entry
+preview, and safe renaming — for files *and* folders. The UI is internationalized
+(German + English) with a runtime language switcher.
 
 ### Delivery model (this rebuild)
 - **Backend:** Python — FastAPI serves a small JSON API; the rename engine is pure,
@@ -39,33 +40,54 @@ When a preview or rename is computed, the engine (`backend/engine/pipeline.py`) 
 
 1. **Reset** every file's `new_base` to its original base name.
 2. **Sort** files by list row (deterministic, in-list-order numbering).
-3. Apply each **active** modifier in this fixed order:
+3. Apply each **active** modifier in pipeline order:
 
    `Replace → Case → If-Then → Remove → Add → Counting → Date`
 
-Each modifier transforms `new_base` in place, feeding the next. **This order is part
-of the contract** and must be preserved (it's locked in by `tests/test_engine.py`).
+The canonical order above is the **default** (`CANONICAL_ORDER` in
+`backend/engine/pipeline.py`) and is locked in by `tests/test_engine.py`. It is
+**user-adjustable**: `Config.pipeline_order` (an optional list of modifier ids,
+`None` = canonical) lets the UI drag-and-drop the modifier cards into a custom
+sequence. `resolve_order()` is defensive: unknown ids are dropped, missing ids
+are appended in canonical order, so a partial/odd list never skips a modifier.
+The order still applies to **all files uniformly** (there is no per-file order).
 
 Only the **base name** is ever modified. The extension (everything from the last `.`
 onward, dot included) is preserved and re-appended on rename. Files with no dot have
-an empty extension; a leading-dot name like `.bashrc` yields an empty base.
+an empty extension. A *leading* dot is not an extension: dot-files like `.bashrc`
+are extension-less (whole name is the base) — the ``os.path.splitext`` convention;
+`.hidden.tar` still splits at its last real dot (base `.hidden`).
+
+**Directories are extension-less**: a `RenameFile` flagged `is_dir=True` keeps
+`ext = ""` no matter what (a directory named `backup.tar` renames to
+`x_backup.tar` — the dot is part of the name, not an extension). All seven modifiers
+operate on the base name and therefore work unchanged for directories; the counting
+modifier's number simply appends to the full name (`Photos` + suffix `02` → `Photos02`).
+Numbering spans a mixed selection in on-screen list order (one combined sequence).
 
 ---
 
 ## 3. Features / abilities (the full checklist)
 
-Every item below must work in the rebuilt UI. The engine side of most of these is
-already implemented and tested (Milestone 2); the UI wiring lands in later milestones.
+Every item below must work in the rebuilt UI. All of it is implemented and
+tested (see §7 for status).
 
 ### Navigation & selection
 - Browse/select a directory (native folder dialog and/or a directory tree).
 - Directory tree navigation that re-roots the file list (and clears selection).
-- File list with **multi-selection**.
-- "Select all" and "Clear selection" actions.
+- Entry list (files and/or directories) with **multi-selection**; directory rows
+  carry a small type badge.
+- **Files / Directories show-hide toggles** (default: files shown, directories
+  hidden — the historical view). Hidden entries are never rendered, never
+  selectable, and are pruned from the selection, previews and duplicate
+  highlights the moment their type is toggled off.
+- "Select all" (selects the *visible* entries) and "Clear selection" actions.
+- After a successful rename, the directory tree refreshes the labels of renamed
+  directories (store `treeVersion` bump).
 - Current-path display.
 
 ### Live preview
-- Per-file "new name" preview column, updated instantly on any control change.
+- Per-entry "new name" preview column, updated instantly on any control change.
 - Preview reflects the full modifier pipeline in the correct order (§2).
 
 ### Modifiers (all seven, each independently toggleable; disabled controls greyed out)
@@ -78,10 +100,13 @@ already implemented and tested (Milestone 2); the UI wiring lands in later miles
 - **Date** — format (DD-MM-YYYY / YYYY-MM-DD / MM-DD-YYYY), date separator, optional name separator (between the date and the rest of the name; empty = direct concatenation), source (created / last-modified / today / custom + date picker), placed as prefix / suffix / insert-at-pos.
 
 ### Safety & workflow (the Rename button)
-1. **Duplicate check** — re-run the pipeline; if any resulting name already exists on disk (skipping unchanged files), show a blocking **Warning** ("Found existing duplicate files for N new filename(s)!") with only an Abort button, and stop.
-2. **Confirmation** — "Rename N File(s)?" with Ok / Abort (N = selected count).
-3. On Ok → perform the renames; only rename files whose new name differs from the current one.
-4. **Success** — "Successfully renamed N File(s)!"
+Duplicate detection is **cross-type**: it compares against whatever exists on disk at
+the target path, so dir→existing-file, dir→existing-dir and file→existing-dir are all
+catched. (Copy was generalized: the original's "File(s)" dialogs now say "Item(s)" / de "Element(e)".)
+1. **Duplicate check** — re-run the pipeline; if any resulting name already exists on disk (skipping unchanged entries), show a blocking **Warning** ("Found existing entries for N new name(s)!") with only an Abort button, and stop.
+2. **Confirmation** — "Rename N Item(s)?" with Ok / Abort (N = selected count).
+3. On Ok → perform the renames; only rename entries whose new name differs from the current one.
+4. **Success** — "Successfully renamed N Item(s)!"
 
 ### UI/UX
 - At-a-glance active-modifier indicator per modifier group (✓ / ✗).
@@ -114,9 +139,32 @@ The original had a few quirks. This rebuild makes explicit choices:
   faithful direct concatenation). When set, it goes between the date and the name text on each
   side that exists (`photo-2024-05-01`, `2024-05-01-photo`), never leaving a dangling
   separator at an edge or against an empty base.
+- **Adjustable pipeline order — ADDED (not in the original).** The canonical order
+  (§2) stays the default and the test baseline; the UI additionally lets the user
+  drag the modifier cards into a custom sequence (`Config.pipeline_order`). The
+  order is per-session (no persistence — a fresh start always uses canonical).
 - **Invalid regex is a no-op** (does not crash the live preview) — a deliberate safety choice.
 - **Empty Replace search is a no-op** (a deliberate safety choice). `str.replace("", x)` would
   otherwise insert the replacement between every character and mangle names on disk.
+- **Directory renaming — ADDED (not in the original).** The original listed files only.
+  This rebuild lists *entries*: `/api/list` returns files **and** subdirectories, each
+  with a `type: "file"|"dir"` field (dirs report `size: 0`, real `mtime`), and the
+  preview/check/rename endpoints accept an optional `dirs[]` (the selected names that
+  are directories) so the engine can flag them extension-less (`RenameFile.is_dir`).
+  Omitting `dirs` ⇒ everything is a file, so old clients keep working. The **default
+  view still shows files only** (toggles in §3), so the historical behavior is
+  preserved out of the box.
+- **View toggles are view state, not modifier config — ADDED.** `showFiles`/`showDirs`
+  live in the frontend store (with `treeVersion`), deliberately **not** in
+  `defaultConfig()`/`sanitizeConfig()`/the backend recipe: they are presentation,
+  not part of the rename pipeline, and are per-session (no persistence).
+- **Dot-files are extension-less — FIXED.** The original (and this port's first cut)
+  treated the leading dot of `.bashrc` as the extension delimiter, leaving an *empty*
+  base — and since every modifier operates on the base, dot-files could never be
+  renamed at all. Now a dot at index 0 is not an extension (matches
+  `os.path.splitext`): `.bashrc` is fully renameable (Replace `.bashrc`→`.zshrc`,
+  Case, Add, Remove, Counting all work), while `.hidden.tar` still splits at its last
+  real dot (base `.hidden`, ext `.tar`).
 
 ---
 
@@ -125,8 +173,14 @@ The original had a few quirks. This rebuild makes explicit choices:
 ```
 arenamer/
 ├── run.py                     # one-command launcher (desktop window, or web fallback)
+├── do                         # release tooling: bump/tag/changelog/build/test (pure stdlib)
 ├── requirements.txt           # runtime deps: fastapi, uvicorn, pywebview
 ├── requirements-dev.txt       # + pytest
+├── pyproject.toml             # app name/version (read by the PyInstaller spec and CI version-sync)
+├── requirements-build.txt     # + pyinstaller, cairosvg, pillow (best-effort icon regen)
+├── build/                     # packaging: build.py (cross-platform orchestrator), arenamer.spec,
+│                              #   _bundle.py, _smoke.py + smoke.spec (headless frozen-bundle test);
+│                              #   build/arenamer/ and build/smoke/ are gitignored build output
 ├── backend/
 │   ├── main.py                # FastAPI app: static mount, /api/health, pywebview bootstrap
 │   ├── api/                   # API routes + Pydantic schemas (list/dirs/preview/check/rename)
@@ -136,40 +190,48 @@ arenamer/
 │   │   ├── add.py remove.py replace.py case.py number.py ifthen.py date.py
 │   └── static/                # built SPA (gitignored; `npm run build` output)
 ├── frontend/                  # Svelte SPA (Vite)
-│   ├── package.json  vite.config.js  index.html
+│   ├── package.json  vite.config.js  vitest.config.js  index.html
 │   └── src/
 │       ├── main.js            # mounts the Svelte app
 │       ├── App.svelte         # root: path bar + tree | file list layout + modifier panels + live-preview effect
 │       ├── lib/api.js         # fetch client for /api/*
 │       ├── lib/config.js      # defaultConfig() + sanitizeConfig() (plain JS, no runes)
 │       ├── lib/i18n/          # en.js + de.js (string tables) and index.svelte.js (language $state, t())
-│       ├── lib/state/         # store.svelte.js — central $state (files, selection, config, previews, dialog)
-│       ├── components/        # FileList, DirectoryTree (+TreeNode), RenameButton, Dialog (done)
+│       ├── lib/state/         # store.svelte.js — central $state (files, selection, view toggles, config, previews, dialog)
+│       ├── components/        # FileList, DirectoryTree (+TreeNode), RenameButton, ModifierCard, Dialog
 │       └── components/modifiers/  # all seven panels: Replace, Case, IfThen, Remove, Add, Counting, Date
+├── .github/workflows/         # GitHub Actions: ci.yml (dev), release.yml (bump+tag), build.yml (3-OS releases)
 └── tests/
-    ├── test_engine.py         # engine suite (61 tests) — modifiers, pipeline order, edge cases
-    └── test_api.py            # API suite (10 tests) — list/dirs/preview/check/rename over HTTP
+    └── backend/
+        ├── test_engine.py     # engine suite (127 tests) — modifiers, pipeline order (incl. custom), directories, dot-files, edge cases
+        └── test_api.py        # API suite (17 tests) — list/dirs/preview/check/rename over HTTP (incl. typed entries + dirs)
 ```
 
 ### Engine public API (`backend/engine/__init__.py`)
 - `Config` / `RenameFile` and the seven modifier config dataclasses — from `models.py`.
+  `RenameFile` has `is_dir: bool = False`: directories are extension-less entries.
 - `compute(files, config)` — run the full pipeline (mutates each file's `new_base`).
-- `build_files(path, names)` — build `RenameFile` objects (row = list position).
-- `preview(files, config)` — per-file new-name info keyed by original name.
-- `find_duplicates(files, config)` / `check_duplicates(...)` — names/count that would clobber an existing file.
+- `build_files(path, names, dirs=None)` — build `RenameFile` objects (row = list position);
+  the `dirs` names are flagged `is_dir=True`.
+- `preview(files, config)` — per-entry new-name info keyed by original name (incl. `type`).
+- `find_duplicates(files, config)` / `check_duplicates(...)` — names/count that would clobber an existing entry (cross-type).
 - `perform_rename(files, config)` — rename on disk; returns `{renamed, errors}`.
 
 The engine is **pure stdlib** (dataclasses, `re`, `os`, `datetime`) — no web deps — so it
 is trivially unit-testable and reusable.
 
 ### API surface (`backend/api/routes.py`, all under `/api`)
-- `GET  /list?path=` — files in a directory (name, size, mtime), sorted; subdirs excluded.
+- `GET  /list?path=` — the directory's entries: files **and** subdirectories, each with
+  `type: "file"|"dir"` (dirs report `size: 0`, real `mtime`), sorted. The response field
+  is still named `files`; filtering by type is client-side (the view toggles, §3).
 - `GET  /dirs?path=` — immediate subdirectories (for lazy tree navigation).
 - `GET  /home`       — the user's home directory (default starting point for the UI).
-- `POST /preview`  `{path, files[], config}` → per-file new-name preview.
-- `POST /check`    `{path, files[], config}` → duplicate names that would clobber existing.
-- `POST /rename`   `{path, files[], config}` → renames on disk; **409** if any would clobber.
+- `POST /preview`  `{path, files[], dirs[], config}` → per-entry new-name preview (incl. `type`).
+- `POST /check`    `{path, files[], dirs[], config}` → duplicate names that would clobber an existing entry.
+- `POST /rename`   `{path, files[], dirs[], config}` → renames on disk; **409** if any would clobber.
 
+`files` carries the selected names in on-screen list order; `dirs` (optional) lists which
+of them are directories — omitted ⇒ everything is a file (backward compatible).
 `config` is a plain JSON object matching `Config.to_dict()` (see §3); the backend converts
 it via `Config.from_dict`, so partial configs from the UI are fine. Unknown keys are ignored
 and `null` values fall back to each field's default, so a cleared UI input never 500s. The
@@ -178,9 +240,14 @@ dialog → `/rename`.
 
 ### Frontend architecture (`frontend/src`)
 - **`lib/state/store.svelte.js`** — the single source of truth. A module-level Svelte 5
-  `$state` object (files, selection, config, previews, duplicateNames, dialog) plus action
+  `$state` object (files, selection, **showFiles/showDirs view toggles**, **treeVersion**,
+  config, previews, duplicateNames, dialog) plus action
   functions (`loadDir`, `openHome`, `goUp`, `toggleSelect`, `selectAll`, `clearSelection`,
-  `refreshPreview`, `showDialog`, `checkDuplicates`, `performRename`). It uses the
+  `setShowFiles`, `setShowDirs`, `reorderModifier`, `resetModifierOrder`,
+  `bumpTreeVersion`,
+  `refreshPreview`, `showDialog`, `checkDuplicates`, `performRename`). `selectAll` selects
+  the *visible* entries only; hiding a type prunes it from selection/previews/duplicates.
+  Preview/check/rename payloads include the `dirs` field. It uses the
   `.svelte.js` extension because `$state` is a rune (only compiled in `.svelte*` files).
 - **`lib/api.js`** — thin `fetch` client for the `/api/*` endpoints.
 - **`lib/config.js`** — `defaultConfig()` (the all-disabled recipe; its shape MUST mirror
@@ -195,18 +262,28 @@ dialog → `/rename`.
   original's `QLocale::system()`: a saved user choice (localStorage) wins, otherwise
   `navigator.language` (`de*` → German). All UI strings go through `t()`; backend error
   messages stay English (technical, not user-facing copy).
-  - **`components/FileList.svelte`** — Name + New Name preview table, multi-select (row/checkbox
-    click toggles; header checkbox selects all), a Select-all/Clear toolbar, and red highlighting
-    of rows that would clobber an existing file. The table fills the center column and scrolls
+  - **`components/FileList.svelte`** — Files/Directories view-toggle checkboxes, a
+    Select-all/Clear toolbar, and the Name + New Name preview table of *visible* entries
+    (multi-select; row/checkbox click toggles; header checkbox selects all; dir rows
+    carry a type badge), with red highlighting of rows that would clobber an existing
+    entry. The table fills the center column and scrolls
     internally (sticky header); `table-layout: fixed` + ellipsis keeps long names from stretching
     the view. **`components/modifiers/`** — all seven panels (Replace, Case, If-Then, Remove, Add,
     Counting/Number, Date), each a self-contained section with an enable toggle + ✓/✗ indicator
     and controls greyed out when disabled; panels are rendered in `App.svelte` in pipeline order
     (§2), stacked vertically in the right-hand sidebar.
 - **`components/DirectoryTree.svelte`** (+ recursive `TreeNode.svelte`) — lazy directory tree
-  rooted at home (`/api/dirs` per expansion); clicking a node re-roots the file list.
+  rooted at home (`/api/dirs` per expansion); clicking a node re-roots the file list. It
+  watches `treeVersion` and re-fetches the children of every loaded node, so renamed
+  directories get fresh labels.
+- **`components/ModifierCard.svelte`** — wrapper around each modifier panel: the grip
+  handle drag-and-drops the card into a custom `pipeline_order` (`reorderModifier`); the
+  hover marks the insertion gap with a line so the drop position is unambiguous (the drop
+  is deferred a frame so the `{#each}` can re-render). Cards are `role="listitem"` inside
+  the `role="list"` modifier sidebar (`App.svelte`).
 - **`components/RenameButton.svelte`** — drives the rename workflow: `/api/check` (blocking
-  duplicate warning) → confirm dialog → `/api/rename` → success dialog, then re-lists the dir.
+  duplicate warning) → confirm dialog → `/api/rename` → success dialog, then re-lists the
+  dir and bumps `treeVersion` (tree label refresh).
 - **`components/Dialog.svelte`** — reusable modal (warning / confirm / info variants; Esc or
   backdrop click dismisses). Rendered once in `App.svelte`; driven by the store's `dialog` state.
 - **`App.svelte`** — composes the header (title + language switcher), the path bar
@@ -215,10 +292,6 @@ dialog → `/rename`.
   (native-app feel); below ~980px it falls back to a stacked, page-scrolling layout.
   A debounced `$effect` re-runs `/api/preview` whenever config, selection or directory
   changes (live preview).
-
-> **Preview shows the full name** (`base + extension`), a deliberate *fix* of the original's
-> base-only preview column (see §4): it is more useful and unambiguous. The engine still returns
-> `new_base`/`ext` separately, so this is a display choice only.
 
 ---
 
@@ -233,18 +306,44 @@ python run.py                            # desktop window (or web fallback at :8
 
 ### Tests (the engine is the verified core)
 ```sh
-python3 -m pytest tests/ -v             # from repo root
+python3 -m pytest tests/ -v             # from repo root (pytest suite lives in tests/backend/)
 ```
+
+`./do test` runs the pytest suite above plus the frontend vitest suite
+(`cd frontend && npm run test`) — one command covers both.
 
 ### Frontend (Svelte)
 ```sh
 cd frontend && npm install
 npm run dev                             # Vite dev server on :5173 (proxies /api -> :8000)
 npm run build                           # emits to ../backend/static for the desktop app
+npm run test                            # vitest unit tests (also runs in CI, see below)
 ```
 
-For a full desktop run: start the backend (`python run.py` or `uvicorn backend.main:app`)
-and either open http://127.0.0.1:8000 (after `npm run build`) or use the Vite dev server.
+### Frontend tests (vitest)
+
+`npm run test` in `frontend/` runs the vitest suite (currently 46 tests across
+four files): `lib/config.test.js` (defaultConfig/sanitizeConfig),
+`lib/i18n/languages.test.js` (en/de key parity, locale detection, `t()`),
+`lib/state/store.svelte.test.js` (selection, view toggles, pipeline order, dialogs, api-backed
+flows with `vi.mock` of `lib/api.js`), and `components/components.smoke.test.js`
+(FileList / Dialog / RenameButton render + interaction smoke tests against the
+real module-level store).
+
+Toolchain notes (keep these when changing the test setup):
+- `vitest.config.js` is deliberately separate from `vite.config.js` so the
+  production build is untouched. It aliases bare `svelte` to its **client entry** —
+  under Vitest's SSR-style transform it otherwise resolves to `index-server.js`
+  and `mount()` throws `lifecycle_function_unavailable`.
+- `components.smoke.test.js` opts into **jsdom** via `// @vitest-environment jsdom`
+  (happy-dom crashes inside Svelte 5 checkbox mounting); everything else runs on
+  happy-dom.
+- Store/i18n are module-level `$state` singletons: unit tests get fresh state via
+  `vi.resetModules()` + dynamic import (store) or explicit resets (component smoke tests).
+- Frontend tests stay **co-located under `frontend/src/`** (vitest convention). A shared
+  `tests/frontend/` folder was tried and abandoned: Vite refuses to load test files outside
+  its project root even with `root` lifted to the repo root. The Python suite lives in
+  `tests/backend/`.
 
 ### Packaging (distributable desktop app)
 
@@ -279,6 +378,39 @@ Packaging internals:
 The frozen app resolves its bundled SPA via `backend/main.py:_base_dir()` (uses `sys._MEIPASS`
 when frozen), and picks a free localhost port in `run.py` so instances don't clash.
 
+### CI & releases (GitHub Actions)
+
+Three workflows in `.github/workflows/` cover development and release; they reuse
+`do` (stdlib-only, so it runs in CI without installs) and `build/build.py` — keep both
+self-contained if you change them. No branch protection is configured (solo development).
+
+- **`ci.yml` — development pipeline.** Triggers: every PR + pushes to `develop`.
+  Four parallel jobs: `backend-tests` (pytest, matrix over Python 3.10 + 3.12),
+  `frontend-tests` (vitest, Node 22), `frontend-build` (production vite build), and
+  `version-sync` (asserts `pyproject.toml` == `frontend/package.json`). pip/npm caching
+  and cancel-in-progress concurrency are set.
+- **`release.yml` — version bump + tag on master.** Trigger: a merged PR whose head
+  branch starts with `release/` and whose base is `master`. It checks out the merge
+  commit with `fetch-depth: 0` (`do bump` needs `git describe --tags` and
+  `git log tag..HEAD`), then: (1) `do bump` → semver decision from the conventional
+  commits since the last tag, version + changelog commit; (2) if HEAD moved, `do tag`
+  → `v<version>` on that commit, and the commit + tag are pushed. Idempotent: nothing
+  new since the last tag → no commit, no tag, job ends. Note: `do` imports `tomllib`,
+  so the job sets up Python 3.12 first (runner system Python is older).
+- **`build.yml` — desktop builds + GitHub Release.** Trigger: tag push `v<digit>*`
+  (fired by `release.yml`). Three parallel OS jobs — `macos-latest`, `windows-latest`,
+  `ubuntu-latest` (PyInstaller cannot cross-compile): install runtime + PyInstaller
+  deps, `python do build` (frontend → bundle → versioned archive), then run the
+  headless smoke test (`build/smoke.spec` → `dist/arenamer-smoke[.exe]`) as proof the
+  frozen bundle imports and serves — the only CI signal that the app actually starts.
+  Linux additionally apt-installs the WebKit2GTK runtime + typelibs for the `gtk` driver.
+  A final `release` job attaches the three artifacts to the GitHub Release, using the
+  matching `changelog.md` section as the release notes.
+
+Release flow: branch `release/vX.Y.Z` off `develop` (conventional commits) → PR to
+`master` → `release.yml` bumps + tags → `build.yml` publishes all three OS artifacts.
+Artifacts are unsigned (Gatekeeper/SmartScreen notes from the Packaging section apply).
+
 ---
 
 ## 7. Milestone plan & status
@@ -292,9 +424,15 @@ when frozen), and picks a free localhost port in `run.py` so instances don't cla
 | 5 | UI: file list (multi-select), directory tree, select-all/clear, path bar, Rename button + dialogs | ✅ done |
 | 6 | Modifier panels: all six with live preview + active indicators (✓/✗) | ✅ done |
 | 7 | i18n: German + English, runtime switcher, system-locale auto-detect | ✅ done |
-| 8 | Polish: dark mode, keyboard shortcuts, drag-and-drop, empty states, error handling | ⬜ next |
+| 8 | Polish: drag-and-drop reordering (ModifierCard), empty states, error handling done; dark mode + keyboard shortcuts still open | 🟡 partial |
+| 9 | CI: GitHub Actions (dev pipeline, automated bump + tag on master, 3-OS release builds) | ✅ done |
+| 10 | Folder editing: directories are renamable extension-less entries (engine + typed `/api/list` + `dirs` payload), Files/Directories view toggles, type badges, tree label refresh | ✅ done |
+| 11 | Dot-file fix: leading-dot names (`.bashrc`) are extension-less — the whole name is the base (`splitext` convention), all modifiers work | ✅ done |
 
 ### Conventions for future work
+- CI reuses `do` and `build/build.py`: keep `do` stdlib-only and the build orchestrator
+  self-contained so the workflows keep working; job display names in `ci.yml` /
+  `release.yml` should stay stable.
 - Keep the engine **pure** (no web/fs-side-effect deps beyond what a rename needs); put
   HTTP concerns in `backend/api/`. Add engine behavior changes **with tests**.
 - The frontend is a single source of truth in `src/lib/state/`; components read/write the

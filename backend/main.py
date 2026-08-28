@@ -39,6 +39,18 @@ BACKEND_DIR = _base_dir()
 STATIC_DIR = os.path.join(BACKEND_DIR, "static")
 
 
+def _window_icon() -> str | None:
+    """Path to the app's PNG icon, or None (window created without one).
+
+    Frozen bundles carry the icons under ``<bundle>/icons`` (see
+    ``build/arenamer.spec``); from a source checkout they live in ``build/icons``.
+    """
+    candidates = [os.path.join(BACKEND_DIR, "icons", "arenamer.png")]
+    if not getattr(sys, "frozen", False):
+        candidates.append(os.path.join(os.path.dirname(BACKEND_DIR), "build", "icons", "arenamer.png"))
+    return next((c for c in candidates if os.path.isfile(c)), None)
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="A-Renamer Tool", version="0.1.0")
 
@@ -92,8 +104,11 @@ def start_desktop(host: str = "127.0.0.1", port: int = 8000) -> None:
 
     # Sized so all three panes (tree | file list | modifiers) are visible at once;
     # each pane scrolls internally, so smaller screens still work.
+    icon = _window_icon()
     window = webview.create_window("A-Renamer Tool", url, width=1360, height=900)
-    webview.start()
+    # pywebview 6.x: icon is a start() parameter (applied on GTK/QT; on macOS/
+    # Windows the window icon comes from the .app/exe icon set in the spec).
+    webview.start(**({"icon": icon} if icon else {}))
 
     # Clean shutdown: stop the server when the window closes.
     server.should_exit = True

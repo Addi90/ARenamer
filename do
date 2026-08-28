@@ -296,9 +296,10 @@ def cmd_build(args: argparse.Namespace) -> None:
 
 
 def cmd_test(_args: argparse.Namespace) -> None:
-    """Run the test suite (engine + API) with pytest."""
+    """Run the test suites: engine + API with pytest, frontend with vitest."""
     py = venv_python()
     subprocess.run([py, "-m", "pytest", "tests/", "-v"], cwd=REPO_ROOT, check=True)
+    subprocess.run(["npm", "run", "test"], cwd=os.path.join(REPO_ROOT, "frontend"), check=True)
 
 
 def main() -> None:
@@ -315,7 +316,7 @@ def main() -> None:
     pbd = sub.add_parser("build", help="build the desktop app (frontend + PyInstaller + archive)")
     pbd.add_argument("--no-frontend", action="store_true", help="reuse an existing backend/static")
     pbd.set_defaults(func=cmd_build)
-    pt = sub.add_parser("test", help="run the pytest suite (engine + API)")
+    pt = sub.add_parser("test", help="run the test suites (engine + API + frontend)")
     pt.set_defaults(func=cmd_test)
     args = p.parse_args()
     args.func(args)

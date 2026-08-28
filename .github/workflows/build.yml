@@ -1,0 +1,155 @@
+name: Build desktop apps
+
+# Triggered by the release tag that release.yml pushes (v<version>).
+# PyInstaller cannot cross-compile, so each OS runner builds its own artifact:
+#   macOS   -> dist/A-Renamer-<v>-macOS.zip   (A-Renamer.app)
+#   Windows -> dist/A-Renamer-<v>-windows.zip (A-Renamer/)
+#   Linux   -> dist/A-Renamer-<v>-linux.tar.gz (A-Renamer/)
+# Every build is validated with the headless frozen-bundle smoke test
+# (build/smoke.spec): it imports the full runtime stack and serves the SPA,
+# hitting /api/health over HTTP - the only CI signal that the frozen app
+# actually starts, since no window can be opened on a runner.
+# The final job attaches all three artifacts to the GitHub Release, with the
+# matching changelog.md section as the release notes.
+
+on:
+  push:
+    tags: ["v[0-9]*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "22"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  build-macos:
+    name: macOS (.app / zip)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install Python + build dependencies
+        run: pip install -r requirements.txt -r requirements-build.txt
+      - name: Build desktop app (frontend -> PyInstaller -> archive)
+        run: python do build
+      - name: Smoke test the frozen bundle (headless)
+        run: |
+          python -m PyInstaller build/smoke.spec --noconfirm
+          dist/arenamer-smoke
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: A-Renamer-macOS
+          path: dist/A-Renamer-*-macOS.zip
+
+  build-windows:
+    name: Windows (WebView2 / zip)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install Python + build dependencies
+        run: pip install -r requirements.txt -r requirements-build.txt
+      - name: Build desktop app (frontend -> PyInstaller -> archive)
+        run: python do build
+      - name: Smoke test the frozen bundle (headless)
+        run: |
+          python -m PyInstaller build/smoke.spec --noconfirm
+          dist\arenamer-smoke.exe
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: A-Renamer-windows
+          path: dist/A-Renamer-*-windows.zip
+
+  build-linux:
+    name: Linux (WebKit2GTK / tar.gz)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The pywebview `gtk` driver loads WebKit2GTK via GI; the runner image
+      # does not ship it, so install the runtime libs + typelibs up front.
+      - name: Install WebKit2GTK system libraries
+        run: |
+          sudo apt-get update
+          # libcairo2: native lib for cairosvg (icon regeneration in
+          # build/make_icons.py actually runs here instead of falling back).
+          sudo apt-get install -y libwebkit2gtk-4.1-0 gir1.2-webkit2-4.1 gir1.2-gtk-3.0 libcairo2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install Python + build dependencies
+        run: pip install -r requirements.txt -r requirements-build.txt
+      - name: Build desktop app (frontend -> PyInstaller -> archive)
+        run: python do build
+      - name: Smoke test the frozen bundle (headless)
+        run: |
+          python -m PyInstaller build/smoke.spec --noconfirm
+          dist/arenamer-smoke
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: A-Renamer-linux
+          path: dist/A-Renamer-*-linux.tar.gz
+
+  release:
+    name: GitHub Release
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Extract changelog section for this release
+        run: |
+          version="${GITHUB_REF#refs/tags/v}"
+          python - "$version" <<'EOF'
+          import re, sys
+          version = sys.argv[1]
+          content = open("changelog.md", encoding="utf-8").read()
+          pattern = r"(?ms)^## \[" + re.escape(version) + r"\][^\n]*\n.*?(?=^## \[\d+\.\d+\.\d+\]|\Z)"
+          m = re.search(pattern, content)
+          notes = m.group(0).rstrip() if m else f"A-Renamer v{version}"
+          with open("RELEASE_NOTES.md", "w", encoding="utf-8") as f:
+              f.write(notes + "\n")
+          print(notes)
+          EOF
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: RELEASE_NOTES.md
+          files: |
+            artifacts/A-Renamer-macOS/*
+            artifacts/A-Renamer-windows/*
+            artifacts/A-Renamer-linux/*
+          fail_on_unmatched_files: true

@@ -1,9 +1,9 @@
 """API routes for the A-Renamer Tool.
 
 Endpoints (all under ``/api``):
-    GET  /list?path=      -> files in a directory (for the file list)
+    GET  /list?path=      -> files and directories in a directory (for the file list)
     GET  /dirs?path=      -> subdirectories (for the directory tree, lazy-loaded)
-    POST /preview         -> per-file new-name preview for a selection + config
+    POST /preview         -> per-entry new-name preview for a selection + config
     POST /check           -> duplicate detection (names that would clobber existing)
     POST /rename          -> perform the renames on disk (with a duplicate safety net)
 
@@ -15,6 +15,7 @@ re-checks for duplicates as a safety net and refuses (HTTP 409) rather than clob
 from __future__ import annotations
 
 import os
+import sys
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -42,16 +43,47 @@ def _require_dir(path: str) -> str:
     return path
 
 
+def _list_dir(path: str) -> list[str]:
+    """The entry names of ``path`` (lowercase-sorted), with a friendly error if unreadable.
+
+    A directory can exist yet be unreadable — macOS TCC blocks apps without the
+    right permission (e.g. an external volume), which used to surface as a raw
+    ``PermissionError`` traceback + opaque 500. Translate it into a 403 with an
+    actionable message the UI can show in its error banner.
+    """
+    try:
+        return sorted(os.listdir(path), key=str.lower)
+    except PermissionError:
+        hint = (
+            " On macOS, grant the app access to this disk "
+            "(System Settings → Privacy & Security → Full Disk Access)."
+            if sys.platform == "darwin"
+            else " Check the folder's permissions."
+        )
+        raise HTTPException(status_code=403, detail=f"Cannot read {path!r}: permission denied.{hint}")
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"Cannot read {path!r}: {e}")
+
+
 @router.get("/list", response_model=ListResponse)
 def list_files(path: str = Query(...)) -> ListResponse:
-    """List the files (not subdirectories) in ``path``, sorted by name."""
+    """List the entries (files *and* subdirectories) in ``path``, sorted by name.
+
+    Every entry carries ``type`` (``"file"`` / ``"dir"``); the UI filters the
+    two types with its view toggles (default: files shown, directories hidden).
+    """
     _require_dir(path)
     entries: list[FileEntry] = []
-    for name in sorted(os.listdir(path), key=str.lower):
+    for name in _list_dir(path):
         full = os.path.join(path, name)
-        if os.path.isfile(full):
+        try:
             st = os.stat(full)
-            entries.append(FileEntry(name=name, size=st.st_size, mtime=st.st_mtime))
+        except OSError:
+            continue  # vanished/broken entry; skip rather than fail the listing
+        if os.path.isdir(full):
+            entries.append(FileEntry(name=name, type="dir", size=0, mtime=st.st_mtime))
+        elif os.path.isfile(full):
+            entries.append(FileEntry(name=name, type="file", size=st.st_size, mtime=st.st_mtime))
     return ListResponse(path=path, files=entries)
 
 
@@ -60,7 +92,7 @@ def list_dirs(path: str = Query(...)) -> DirsResponse:
     """List the immediate subdirectories of ``path`` (for tree navigation)."""
     _require_dir(path)
     entries: list[DirEntry] = []
-    for name in sorted(os.listdir(path), key=str.lower):
+    for name in _list_dir(path):
         if name in (".", ".."):
             continue
         full = os.path.join(path, name)
@@ -77,28 +109,35 @@ def home() -> dict:
 
 @router.post("/preview", response_model=PreviewResponse)
 def api_preview(req: PreviewRequest) -> PreviewResponse:
-    """Compute the new name for each selected file under the given config."""
+    """Compute the new name for each selected entry (files and dirs) under the config."""
     cfg = Config.from_dict(req.config)
-    files = build_files(req.path, req.files)
+    files = build_files(req.path, req.files, req.dirs)
     return PreviewResponse(path=req.path, previews=preview(files, cfg))
 
 
 @router.post("/check", response_model=CheckResponse)
 def api_check(req: CheckRequest) -> CheckResponse:
-    """Report which selected files would clobber an existing file on rename."""
+    """Report which selected entries would clobber an existing file or dir on rename.
+
+    The existence check is cross-type: a directory target clobbers an existing
+    file just as a file target clobbers an existing directory.
+    """
     cfg = Config.from_dict(req.config)
-    files = build_files(req.path, req.files)
+    files = build_files(req.path, req.files, req.dirs)
     dups = find_duplicates(files, cfg)
     return CheckResponse(duplicates=len(dups), names=dups)
 
 
 @router.post("/rename", response_model=RenameResponse)
 def api_rename(req: RenameRequest) -> RenameResponse:
-    """Perform the renames on disk. Refuses (409) if any would clobber an existing file."""
-    cfg = Config.from_dict(req.config)
-    files = build_files(req.path, req.files)
+    """Perform the renames on disk (files and directories).
 
-    # Safety net: even if the client skipped /check, never clobber an existing file.
+    Refuses (409) if any would clobber an existing entry.
+    """
+    cfg = Config.from_dict(req.config)
+    files = build_files(req.path, req.files, req.dirs)
+
+    # Safety net: even if the client skipped /check, never clobber an existing entry.
     dups = find_duplicates(files, cfg)
     if dups:
         raise HTTPException(status_code=409, detail={"duplicates": len(dups), "names": dups})
