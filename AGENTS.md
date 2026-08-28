@@ -177,7 +177,7 @@ arenamer/
 ├── requirements.txt           # runtime deps: fastapi, uvicorn, pywebview
 ├── requirements-dev.txt       # + pytest
 ├── pyproject.toml             # app name/version (read by the PyInstaller spec and CI version-sync)
-├── requirements-build.txt     # + pyinstaller
+├── requirements-build.txt     # + pyinstaller, cairosvg, pillow (best-effort icon regen)
 ├── build/                     # packaging: build.py (cross-platform orchestrator), arenamer.spec,
 │                              #   _bundle.py, _smoke.py + smoke.spec (headless frozen-bundle test);
 │                              #   build/arenamer/ and build/smoke/ are gitignored build output

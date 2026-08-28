@@ -94,7 +94,9 @@ jobs:
       - name: Install WebKit2GTK system libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-0 gir1.2-webkit2-4.1 gir1.2-gtk-3.0
+          # libcairo2: native lib for cairosvg (icon regeneration in
+          # build/make_icons.py actually runs here instead of falling back).
+          sudo apt-get install -y libwebkit2gtk-4.1-0 gir1.2-webkit2-4.1 gir1.2-gtk-3.0 libcairo2
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}

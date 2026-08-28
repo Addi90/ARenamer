@@ -2,3 +2,9 @@
 # Install into your venv before running `python build/build.py`:
 #     pip install -r requirements-build.txt
 pyinstaller>=6.0
+# Icon (re)generation (build/make_icons.py). Best effort by design - without
+# these (or without the *native* cairo library: brew install cairo /
+# apt-get install libcairo2) the build falls back to the committed
+# build/icons/. Listed here so fresh clones can still regenerate them.
+cairosvg>=2.7
+pillow>=10.0
