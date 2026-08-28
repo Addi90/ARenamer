@@ -75,7 +75,8 @@
 
 <main class="shell">
   <header class="head">
-    <div>
+    <div class="title">
+      <img class="logo" src="/favicon.svg" alt="" aria-hidden="true" />
       <h1>{t("app.title")}</h1>
       <p class="sub">{t("app.subtitle")}</p>
     </div>
@@ -153,7 +154,9 @@
     color: #1f2430;
   }
   .head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
-  h1 { margin-bottom: 2px; font-size: 1.6rem; }
+  .title { display: flex; align-items: baseline; gap: 10px; }
+  .logo { width: 34px; height: 34px; border-radius: 8px; flex: none; }
+  h1 { font-size: 1.6rem; line-height: 1.2; }
   .sub { color: #6b7280; margin-top: 0; font-size: 0.9rem; }
   .lang { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #4b5563; }
   .lang select { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; font-size: 0.9rem; color: #1f2430; }

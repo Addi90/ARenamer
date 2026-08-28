@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(SPEC)))  # noqa: F821
 from _bundle import collect_bundle_deps  # noqa: E402
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(SPEC)))  # noqa: F821
+ICON_WINDOWS = os.path.join(REPO_ROOT, "build", "icons", "arenamer.ico")
 STATIC_SRC = os.path.join(REPO_ROOT, "backend", "static")
 
 datas, binaries, hiddenimports = collect_bundle_deps()
@@ -46,4 +47,5 @@ exe = EXE(  # noqa: F821
     upx=False,
     runtime_tmpdir=None,
     console=True,
+    icon=ICON_WINDOWS if sys.platform == "win32" and os.path.exists(ICON_WINDOWS) else None,
 )
