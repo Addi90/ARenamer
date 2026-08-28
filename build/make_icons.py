@@ -8,8 +8,10 @@ without a rasterizer installed):
   arenamer.ico   16-256px multi-size - Windows exe icon (PyInstaller)
   arenamer.icns  macOS .app bundle icon (macOS only, via ``iconutil``)
 
-Best effort by design: if cairosvg/Pillow are missing it prints a warning and
-keeps the committed icons as-is, never failing the build.
+Best effort by design: if cairosvg/Pillow are missing (or the native cairo
+library cannot be loaded - it then re-runs itself once with the library's
+directory on the linker search path) it prints a warning and keeps the
+committed icons as-is, never failing the build.
 
     python build/make_icons.py
 """
@@ -42,6 +44,65 @@ ICONSET = {
 }
 
 
+def _import_cairosvg():
+    """Import cairosvg.
+
+    Raises ``ImportError`` if the pip package is missing, ``OSError`` if the
+    native cairo library exists but is not on the dynamic linker's default
+    search paths (cairocffi dlopens the bare name ``libcairo.2.dylib`` /
+    ``libcairo.so.2``, so a Homebrew/apt install is invisible to it). In that
+    case the caller can :func:`_relaunch_with_cairo`.
+    """
+    import cairosvg
+
+    return cairosvg
+
+
+def _cairo_lib_dir() -> str | None:
+    """Return a directory containing the native cairo library, if any."""
+    import ctypes.util
+
+    soname = "libcairo.2.dylib" if sys.platform == "darwin" else "libcairo.so.2"
+    candidates = [
+        ctypes.util.find_library("cairo"),
+        "/opt/homebrew/lib",            # Homebrew (Apple Silicon)
+        "/usr/local/lib",               # Homebrew (Intel) / manual installs
+        "/usr/lib",
+        "/usr/lib/x86_64-linux-gnu",
+        "/usr/lib/aarch64-linux-gnu",
+    ]
+    for base in candidates:
+        if not base:
+            continue
+        path = base if base.endswith(soname) else os.path.join(base, soname)
+        if os.path.isfile(path):
+            return os.path.dirname(path)
+    return None
+
+
+def _relaunch_with_cairo(lib_dir: str) -> bool:
+    """Re-exec this script with the cairo dir on the dyld/LD search path.
+
+    ``DYLD_FALLBACK_LIBRARY_PATH``/``LD_LIBRARY_PATH`` are read by the dynamic
+    linker at process start, so the only way to reach a cairo install that is
+    off the default paths is a one-shot re-exec. Returns ``False`` if this is
+    already the re-exec (no loop) or the exec failed; on success it never
+    returns.
+    """
+    if os.environ.get("_ARENAMER_ICONS_RELAUNCHED"):
+        return False
+    env = dict(os.environ)
+    var = "DYLD_FALLBACK_LIBRARY_PATH" if sys.platform == "darwin" else "LD_LIBRARY_PATH"
+    env[var] = lib_dir + os.pathsep + env.get(var, "")
+    env["_ARENAMER_ICONS_RELAUNCHED"] = "1"
+    print(f"cairo not on the default linker path - re-running with {var}={lib_dir}", flush=True)  # flush: execve discards unflushed buffers
+    try:
+        os.execve(sys.executable, [sys.executable, os.path.abspath(__file__)] + list(sys.argv[1:]), env)
+    except OSError as exc:
+        print(f"warning: re-exec failed ({exc}); keeping the committed icons")
+    return False
+
+
 def _rasterize(size: int, dest: str) -> None:
     import cairosvg
 
@@ -54,11 +115,27 @@ def main() -> int:
     os.makedirs(ICONS_DIR, exist_ok=True)
 
     try:
-        import cairosvg  # noqa: F401
-        from PIL import Image
-    except ImportError as exc:
+        _import_cairosvg()
+    except ImportError:
         print(
-            f"warning: {exc.name} not available - skipping icon regeneration "
+            "warning: cairosvg not available - skipping icon regeneration "
+            "(using the committed build/icons/*.png|.ico|.icns)."
+        )
+        return 0
+    except OSError:
+        lib_dir = _cairo_lib_dir()
+        if lib_dir and _relaunch_with_cairo(lib_dir):
+            pass  # re-exec in progress / failed; fall through and give up below
+        print(
+            "warning: native cairo library could not be loaded - skipping icon "
+            "regeneration (using the committed build/icons/*.png|.ico|.icns)."
+        )
+        return 0
+    try:
+        from PIL import Image  # noqa: F401
+    except ImportError:
+        print(
+            "warning: Pillow not available - skipping icon regeneration "
             "(using the committed build/icons/*.png|.ico|.icns)."
         )
         return 0
