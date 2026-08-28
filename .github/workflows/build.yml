@@ -124,28 +124,51 @@ jobs:
     name: GitHub Release
     needs: [build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+
       - name: Extract changelog section for this release
         run: |
           version="${GITHUB_REF#refs/tags/v}"
+
           python - "$version" <<'EOF'
-          import re, sys
+          import re
+          import sys
+
           version = sys.argv[1]
-          content = open("changelog.md", encoding="utf-8").read()
-          pattern = r"(?ms)^## \[" + re.escape(version) + r"\][^\n]*\n.*?(?=^## \[\d+\.\d+\.\d+\]|\Z)"
+
+          with open("changelog.md", encoding="utf-8") as f:
+              content = f.read()
+
+          pattern = (
+              r"(?ms)^## \[" +
+              re.escape(version) +
+              r"\][^\n]*\n.*?(?=^## \[\d+\.\d+\.\d+\]|\Z)"
+          )
+
           m = re.search(pattern, content)
-          notes = m.group(0).rstrip() if m else f"A-Renamer v{version}"
+
+          if not m:
+              raise SystemExit(
+                  f"No changelog section found for version {version}"
+              )
+
+          notes = m.group(0).rstrip()
+
           with open("RELEASE_NOTES.md", "w", encoding="utf-8") as f:
               f.write(notes + "\n")
+
           print(notes)
           EOF
+
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           body_path: RELEASE_NOTES.md
           files: |
