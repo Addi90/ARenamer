@@ -79,7 +79,9 @@ whose new name differs → **"Successfully renamed N Item(s)!"**
 ```
 run.py                 # one-command launcher (desktop window / :8000 web)
 do                     # release tooling, pure stdlib: bump / tag / changelog / build / test
-pyproject.toml         # single source of version truth (PyInstaller spec + CI version-sync)
+pyproject.toml         # single source of version truth (PyInstaller spec + CI version-sync);
+                       #   also pip-installable (pip install -e . -> `arenamer`)
+plan.md                # historical planning doc (directory renaming; shipped in 0.3.0 — don't re-execute)
 requirements*.txt      # runtime (fastapi, uvicorn, pywebview) / -dev (+pytest) / -build (+pyinstaller, cairosvg, pillow)
 changelog.md           # per-tag sections written by `do bump`
 backend/
@@ -89,7 +91,7 @@ backend/
                        #   pipeline.py, add remove replace case number ifthen date
 frontend/src/
 ├── App.svelte         # 3-pane layout (tree | file list | modifier sidebar), header + language
-│                      #   switcher, path bar (Home/Up/Open), error banner, dialog host,
+│                      #   switcher, path bar (Home/Up/Open), dismissible error banner, dialog host,
 │                      #   debounced preview $effect; page never scrolls (each pane does), stacked below ~980px
 ├── lib/state/store.svelte.js   # THE single $state store + all actions (see §6)
 ├── lib/api.js         # fetch client for /api/*
@@ -187,14 +189,15 @@ dynamic import (store) or explicit resets (smoke). Frontend tests stay **co-loca
 `python build/build.py` (or `./do build`): frontend → (re)generate native icons from
 `favicon.svg` (best effort via `make_icons.py`; committed icons are the fallback) →
 PyInstaller (`build/arenamer.spec`, one-folder bundle, `.app` on macOS; `CONSOLE=False`
-for Windows release builds) → versioned archive in `dist/`. `_bundle.py` collects
+always — it's a GUI app, and on macOS console=True would hide the Dock icon) →
+versioned archive in `dist/`. `_bundle.py` collects
 pywebview's JS bridge, uvicorn's dynamic loop modules, and (macOS) the PyObjC frameworks
 behind WKWebView. Because **PyInstaller cannot cross-compile, run it on each target OS**:
 
 | OS | Artifact | pywebview driver | System requirement |
 |----|----------|------------------|--------------------|
 | macOS | `A-Renamer.app` + `-macOS.zip` | `cocoa` (WKWebView) | none; unsigned → right-click→Open past Gatekeeper |
-| Windows | `A-Renamer/` + `-win64.zip` | `edgechromium` (WebView2) | WebView2 Runtime (preinstalled Win10/11) |
+| Windows | `A-Renamer/` + `-windows.zip` | `edgechromium` (WebView2) | WebView2 Runtime (preinstalled Win10/11) |
 | Linux | `A-Renamer/` + `-linux.tar.gz` | `gtk` (WebKit2GTK) | `libwebkit2gtk-4.x` |
 
 Headless frozen-bundle smoke test: `python -m PyInstaller build/smoke.spec &&
@@ -207,10 +210,13 @@ localhost port so instances don't clash.
 - **`ci.yml`** (PRs + pushes to `develop`): 4 parallel jobs — backend-tests (pytest,
   Python 3.10/3.12), frontend-tests (vitest, Node 22), frontend-build, version-sync
   (asserts `pyproject.toml` == `frontend/package.json`).
-- **`release.yml`** (PR `release/*` → `master`, `fetch-depth: 0` because `do bump` needs
-  `git describe`): `do bump` (semver from conventional commits since last tag; commit
-  version + changelog) → if HEAD moved, `do tag` (`v<version>`); push both. Idempotent:
-  nothing new → no commit/tag. Job sets up Python 3.12 first (`do` imports `tomllib`).
+- **`release.yml`** (trigger: `pull_request` **closed** with `merged == true`, base
+  `master`, head `release/*` — so it only fires on actual merges; checks out `master`
+  with `fetch-depth: 0` because `do bump` needs `git describe`; optional
+  `RELEASE_PAT` token): `do bump` (semver from conventional commits since last tag;
+  commit version + changelog) → if HEAD moved, `do tag` (`v<version>`), then push
+  `master --tags`. Idempotent: nothing new → no commit/tag. Job sets up Python 3.12
+  first (`do` imports `tomllib`).
 - **`build.yml`** (tag push `v<digit>*`): three parallel OS jobs install runtime +
   PyInstaller deps, `python do build`, then run the headless smoke test (the only CI
   signal that the app actually starts); Linux apt-installs WebKit2GTK + typelibs. Final

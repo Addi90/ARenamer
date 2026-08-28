@@ -22,9 +22,12 @@ Modifiers are applied in a pipeline (`Replace → Case → If-Then → Remove �
 
 ```sh
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt   # fastapi, uvicorn, pywebview, pytest
+pip install -r requirements-dev.txt   # fastapi, uvicorn, pywebview, pytest (+httpx2 for the API tests)
 python run.py                         # opens a desktop window (or web fallback)
 ```
+
+(Or `pip install -e .` instead of the requirements files — `pyproject.toml` makes the
+project pip-installable and provides the `arenamer` command.)
 
 `run.py` starts the backend and tries to open a native desktop window; in headless environments it falls back to serving the web UI at `http://127.0.0.1:<port>`.
 
@@ -56,7 +59,7 @@ python build/build.py                   # frontend -> icons -> PyInstaller -> ve
 | OS | Artifact in `dist/` | Web engine | End-user requirement |
 |----|---------------------|------------|----------------------|
 | macOS | `A-Renamer.app` + `-macOS.zip` | WKWebView (cocoa) | none; unsigned → right-click → Open past Gatekeeper |
-| Windows | `A-Renamer/` + `-win64.zip` | WebView2 (edgechromium) | Edge WebView2 Runtime (preinstalled on Win 10/11) |
+| Windows | `A-Renamer/` + `-windows.zip` | WebView2 (edgechromium) | Edge WebView2 Runtime (preinstalled on Win 10/11) |
 | Linux | `A-Renamer/` + `-linux.tar.gz` | WebKit2GTK (gtk) | `libwebkit2gtk-4.x` system libraries |
 
 PyInstaller cannot cross-compile, so run the build on each target OS to get that OS's artifact.
