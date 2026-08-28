@@ -11,12 +11,29 @@
   import AddModifier from "./components/modifiers/AddModifier.svelte";
   import CountingModifier from "./components/modifiers/CountingModifier.svelte";
   import DateModifier from "./components/modifiers/DateModifier.svelte";
-  import { state as appState, loadDir, openHome, goUp, refreshPreview } from "./lib/state/store.svelte.js";
+  import ModifierCard from "./components/ModifierCard.svelte";
+  import { state as appState, loadDir, openHome, goUp, clearError, refreshPreview, resetModifierOrder, defaultConfig } from "./lib/state/store.svelte.js";
   import { language, setLanguage, t, languages } from "./lib/i18n/index.svelte.js";
+
+  // id -> panel component; the sidebar renders them in `config.pipeline_order`.
+  const MODIFIERS = {
+    replace: ReplaceModifier,
+    case: CaseModifier,
+    ifthen: IfThenModifier,
+    remove: RemoveModifier,
+    add: AddModifier,
+    counting: CountingModifier,
+    date: DateModifier,
+  };
 
   // Draft path in the input; committed only on Open/Enter (so typing doesn't
   // re-trigger preview with a half-typed path).
   let pathInput = $state("");
+
+  // True while the modifier order differs from the canonical default order.
+  const orderChanged = $derived(
+    appState.config.pipeline_order.some((id, i) => id !== defaultConfig().pipeline_order[i])
+  );
 
   function commitPath() {
     const p = pathInput.trim();
@@ -58,7 +75,8 @@
 
 <main class="shell">
   <header class="head">
-    <div>
+    <div class="title">
+      <img class="logo" src="/favicon.svg" alt="" aria-hidden="true" />
       <h1>{t("app.title")}</h1>
       <p class="sub">{t("app.subtitle")}</p>
     </div>
@@ -80,7 +98,15 @@
   </div>
 
   {#if appState.error}
-    <div class="error">{appState.error}</div>
+    <div class="error">
+      <span class="msg">{appState.error}</span>
+      <button class="dismiss" aria-label={t("app.errorDismiss")} title={t("app.errorDismiss")} onclick={clearError}>
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5" />
+          <path d="M5.5 5.5 L10.5 10.5 M10.5 5.5 L5.5 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      </button>
+    </div>
   {/if}
 
   <div class="main">
@@ -93,20 +119,26 @@
       {/snippet}
       <FileList {actions} />
     </div>
-    <!-- Panels are rendered in pipeline order (Replace → Case → If-Then → Remove →
-         Add → Counting → Date) so the composition order is visible to the user. They live
-         in a right-hand sidebar (scrollable) so they're always visible without page
-         scrolling — like the original desktop app, but side-by-side. -->
+    <!-- Panels are rendered in `config.pipeline_order` (canonical default:
+         Replace → Case → If-Then → Remove → Add → Counting → Date) so the
+         composition order is visible to the user, and can be rearranged by
+         dragging the cards. They live in a right-hand sidebar (scrollable) so
+         they're always visible without page scrolling. -->
     <aside class="modifiers-pane">
-      <h2>{t("modifiers.title")}</h2>
-      <section class="modifiers">
-        <ReplaceModifier />
-        <CaseModifier />
-        <IfThenModifier />
-        <RemoveModifier />
-        <AddModifier />
-        <CountingModifier />
-        <DateModifier />
+      <div class="pane-head">
+        <h2>{t("modifiers.title")}</h2>
+        {#if orderChanged}
+          <button onclick={resetModifierOrder} title={t("modifiers.resetOrder")}>{t("modifiers.resetOrder")}</button>
+        {/if}
+      </div>
+      <p class="hint">{t("modifiers.dragHint")}</p>
+      <section class="modifiers" role="list" aria-label={t("modifiers.title")}>
+        {#each appState.config.pipeline_order as id, i (id)}
+          {@const Comp = MODIFIERS[id]}
+          <ModifierCard {id} index={i}>
+            {#if Comp}<Comp />{/if}
+          </ModifierCard>
+        {/each}
       </section>
     </aside>
   </div>
@@ -130,7 +162,9 @@
     color: #1f2430;
   }
   .head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
-  h1 { margin-bottom: 2px; font-size: 1.6rem; }
+  .title { display: flex; align-items: baseline; gap: 10px; }
+  .logo { width: 34px; height: 34px; border-radius: 8px; flex: none; }
+  h1 { font-size: 1.6rem; line-height: 1.2; }
   .sub { color: #6b7280; margin-top: 0; font-size: 0.9rem; }
   .lang { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #4b5563; }
   .lang select { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; font-size: 0.9rem; color: #1f2430; }
@@ -143,7 +177,10 @@
   button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
   button.primary:hover:not(:disabled) { background: #1d4ed8; }
 
-  .error { margin-bottom: 12px; padding: 8px 12px; border-radius: 6px; background: #fdecec; color: #7f1d1d; font-size: 0.85rem; }
+  .error { margin-bottom: 12px; padding: 8px 12px; border-radius: 6px; background: #fdecec; color: #7f1d1d; font-size: 0.85rem; display: flex; align-items: center; gap: 10px; }
+  .error .msg { flex: 1; min-width: 0; }
+  .error .dismiss { flex: none; padding: 3px; border: none; background: none; color: #7f1d1d; border-radius: 50%; cursor: pointer; display: flex; align-items: center; }
+  .error .dismiss:hover { background: #f8d7d7; }
 
   .main { flex: 1; min-height: 0; display: flex; gap: 16px; align-items: stretch; }
   .tree-pane { flex: 0 0 240px; min-width: 0; display: flex; flex-direction: column; }
@@ -157,8 +194,13 @@
     flex-direction: column;
     min-height: 0;
   }
-  .modifiers-pane h2 { margin: 0 0 8px; font-size: 0.95rem; color: #374151; }
-  .modifiers { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+  .modifiers-pane h2 { margin: 0 0 4px; font-size: 0.95rem; color: #374151; }
+  .modifiers-pane .pane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 4px; }
+  .modifiers-pane .hint { margin: 0 0 8px; font-size: 0.8rem; color: #6b7280; }
+  /* The padding keeps the drop markers of the first/last card (which extend
+     past the card edges) inside the scroll container — `overflow-y: auto`
+     would otherwise clip anything drawn above the top edge. */
+  .modifiers { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 10px 8px; }
 
   /* Narrow screens (phones / small browser windows): fall back to the stacked
      layout and let the page scroll, since three columns can't fit. */

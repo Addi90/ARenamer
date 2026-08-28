@@ -6,9 +6,10 @@ preview and the actual rename go through :func:`compute`, guaranteeing they agre
 Public API:
     Config, RenameFile          -- data models (see :mod:`backend.engine.models`)
     compute(files, config)      -- run the full modifier pipeline (see :mod:`pipeline`)
-    build_files(path, names)    -- construct RenameFile objects from a dir + filenames
+    build_files(path, names, dirs=None) -- construct RenameFile objects; ``dirs`` marks
+                                            directory entries (extension-less: whole name is base)
     preview(files, config)      -- per-file new-name info (for the UI column)
-    check_duplicates(files, cfg)-- count results that would clobber an existing file
+    check_duplicates(files, cfg)-- count results that would clobber an existing entry
 """
 
 from .models import (
@@ -24,6 +25,7 @@ from .models import (
     split_name,
 )
 from .pipeline import (
+    CANONICAL_ORDER,
     build_files,
     check_duplicates,
     compute,
@@ -34,6 +36,7 @@ from .pipeline import (
 
 __all__ = [
     "Config",
+    "CANONICAL_ORDER",
     "RenameFile",
     "AddConfig",
     "CaseConfig",

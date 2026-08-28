@@ -28,7 +28,7 @@ async function request(method, url, body) {
 
 const url = (endpoint, path) => `/api/${endpoint}?path=${encodeURIComponent(path)}`;
 
-/** List the files (not subdirs) in a directory, sorted by name. */
+/** List the entries (files *and* subdirectories, each with its `type`) in a directory. */
 export const listFiles = (path) => request("GET", url("list", path));
 
 /** List the immediate subdirectories of a directory (for tree navigation). */
@@ -37,11 +37,11 @@ export const listDirs = (path) => request("GET", url("dirs", path));
 /** The user's home directory — a sensible default starting point. */
 export const homeDir = () => request("GET", "/api/home");
 
-/** Compute per-file new-name previews for a selection under a config. */
+/** Compute per-entry new-name previews for a selection under a config. */
 export const preview = (payload) => request("POST", "/api/preview", payload);
 
-/** Report which of the selection would clobber an existing file on rename. */
+/** Report which of the selection would clobber an existing entry on rename. */
 export const check = (payload) => request("POST", "/api/check", payload);
 
-/** Perform the renames on disk. Throws (409) if any would clobber an existing file. */
+/** Perform the renames on disk. Throws (409) if any would clobber an existing entry. */
 export const rename = (payload) => request("POST", "/api/rename", payload);
