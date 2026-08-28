@@ -1,3 +1,5 @@
+<p align="center"><img src="build/icons/arenamer.png" width="144" alt="A-Renamer Tool logo"></p>
+
 # A-Renamer Tool
 
 The A (or Adrian's) – Renamer is a tool for bulk renaming files **and directories** in various ways. Its graphical user interface lets the user easily select a file directory and then select the entries (files and/or folders) to bulk rename. In the file selection view it also provides a live preview of the new name for each selected entry, and Files/Directories toggles control which entry types are shown (default: files only, the historical view).
@@ -14,7 +16,7 @@ The user has various ways of adding, removing and replacing content in a filenam
 - **Date** — add a date (created, last modified, today, or custom) in several formats
 - **Counting** — add a running number (start value, zero-padding) in list order
 
-Modifiers are applied in a fixed pipeline order (`Replace → Case → If-Then → Remove → Add → Counting → Date`), each independently toggleable, with an instant per-file preview. Renaming is safe: a duplicate check runs first (blocking warning if any new name would clobber an existing entry — cross-type, so renaming a folder onto a file or vice versa is caught too), followed by a confirmation dialog. Directories are treated as *extension-less* entries: a folder named `backup.tar` renames to `x_backup.tar` (nothing is stripped). The UI is internationalized (German + English) with a runtime language switcher.
+Modifiers are applied in a pipeline (`Replace → Case → If-Then → Remove → Add → Counting → Date`) whose order you can also customize by dragging the modifier cards, each modifier independently toggleable, with an instant per-entry preview. Renaming is safe: a duplicate check runs first (blocking warning if any new name would clobber an existing entry — cross-type, so renaming a folder onto a file or vice versa is caught too), followed by a confirmation dialog. Directories are treated as *extension-less* entries: a folder named `backup.tar` renames to `x_backup.tar` (nothing is stripped). The UI is internationalized (German + English) with a runtime language switcher.
 
 ## Quick start
 
@@ -29,22 +31,26 @@ python run.py                         # opens a desktop window (or web fallback)
 ## Development
 
 ```sh
-# Backend / engine tests (the rename engine is the verified core)
-python3 -m pytest tests/ -v
+# Both test suites in one command (pytest engine + API, then vitest frontend)
+./do test
 
-# Frontend (Svelte + Vite)
+# Or individually:
+python3 -m pytest tests/ -v          # backend / engine (the verified core)
 cd frontend && npm install
 npm run dev        # dev server on :5173, proxies /api -> :8000
 npm run build      # emits to ../backend/static for the desktop app
+npm run test       # frontend vitest suite
 ```
+
+`do` is a small stdlib-only release tool (`do bump` / `do tag` / `do changelog` / `do build` / `do test`), also used by the CI workflows.
 
 ## Packaging (distributable desktop app)
 
 The app is bundled with PyInstaller into a self-contained desktop application (no Python required by end users):
 
 ```sh
-pip install -r requirements-build.txt   # pyinstaller
-python build/build.py                   # frontend -> PyInstaller -> versioned archive in dist/
+pip install -r requirements-build.txt   # pyinstaller (+ cairosvg/pillow for optional icon regen)
+python build/build.py                   # frontend -> icons -> PyInstaller -> versioned archive in dist/
 ```
 
 | OS | Artifact in `dist/` | Web engine | End-user requirement |
@@ -68,14 +74,18 @@ So a release is simply: branch `release/vX.Y.Z` off `develop` → pull request t
 ```
 arenamer/
 ├── run.py                     # one-command launcher (desktop window, or web fallback)
+├── do                         # stdlib-only release tooling (bump/tag/changelog/build/test)
+├── pyproject.toml             # single source of truth for name + version
+├── changelog.md               # per-version sections (written by `do bump`)
 ├── backend/
 │   ├── main.py                # FastAPI app: static mount, /api/* routes, pywebview bootstrap
 │   ├── api/                   # API routes + Pydantic schemas (list/dirs/preview/check/rename)
 │   ├── engine/                # PURE rename engine (no web deps) — the correctness core
 │   └── static/                # built SPA (gitignored; `npm run build` output)
 ├── frontend/                  # Svelte SPA (Vite): file list, directory tree, modifier panels
-├── build/                     # PyInstaller packaging (spec + orchestrator)
-└── tests/                     # pytest suites for engine and API
+├── build/                     # PyInstaller packaging (spec, orchestrator, icons)
+├── tests/                     # pytest suites for engine and API
+└── .github/workflows/         # ci.yml, release.yml, build.yml
 ```
 
 See [AGENTS.md](AGENTS.md) for the full feature checklist, behavior decisions vs. the original, and architecture details.
