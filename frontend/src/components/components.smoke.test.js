@@ -47,7 +47,7 @@ function resetStore() {
   state.dialog = { open: false, title: "", message: "", variant: "info", buttons: [], dismissId: null };
   state.error = "";
   state.renaming = false;
-  state.path = "/tmp/somewhere";
+  state.currentPath = "/tmp/somewhere";
 }
 
 beforeEach(() => {
@@ -151,7 +151,7 @@ describe("RenameButton", () => {
     render(RenameButton);
 
     await fireEvent.click(screen.getByRole("button"));
-    await new Promise((r) => setTimeout(r, 250)); // let the async check flow settle
+    await new Promise((r) => setTimeout(r, 0)); // flush the microtask queue (all api mocks are pre-resolved)
 
     expect(api.check).toHaveBeenCalled();
     // No duplicates from the mocked check -> a confirmation dialog should be open.
@@ -164,7 +164,7 @@ describe("RenameButton", () => {
     render(RenameButton);
 
     await fireEvent.click(screen.getByRole("button"));
-    await new Promise((r) => setTimeout(r, 250));
+    await new Promise((r) => setTimeout(r, 0)); // flush the microtask queue (all api mocks are pre-resolved)
 
     expect(state.dialog.open).toBe(true);
     expect(api.rename).not.toHaveBeenCalled();
