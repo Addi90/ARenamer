@@ -12,7 +12,7 @@
   import CountingModifier from "./components/modifiers/CountingModifier.svelte";
   import DateModifier from "./components/modifiers/DateModifier.svelte";
   import ModifierCard from "./components/ModifierCard.svelte";
-  import { state as appState, loadDir, openHome, goUp, refreshPreview, resetModifierOrder, defaultConfig } from "./lib/state/store.svelte.js";
+  import { state as appState, loadDir, openHome, goUp, clearError, refreshPreview, resetModifierOrder, defaultConfig } from "./lib/state/store.svelte.js";
   import { language, setLanguage, t, languages } from "./lib/i18n/index.svelte.js";
 
   // id -> panel component; the sidebar renders them in `config.pipeline_order`.
@@ -98,7 +98,15 @@
   </div>
 
   {#if appState.error}
-    <div class="error">{appState.error}</div>
+    <div class="error">
+      <span class="msg">{appState.error}</span>
+      <button class="dismiss" aria-label={t("app.errorDismiss")} title={t("app.errorDismiss")} onclick={clearError}>
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5" />
+          <path d="M5.5 5.5 L10.5 10.5 M10.5 5.5 L5.5 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      </button>
+    </div>
   {/if}
 
   <div class="main">
@@ -169,7 +177,10 @@
   button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
   button.primary:hover:not(:disabled) { background: #1d4ed8; }
 
-  .error { margin-bottom: 12px; padding: 8px 12px; border-radius: 6px; background: #fdecec; color: #7f1d1d; font-size: 0.85rem; }
+  .error { margin-bottom: 12px; padding: 8px 12px; border-radius: 6px; background: #fdecec; color: #7f1d1d; font-size: 0.85rem; display: flex; align-items: center; gap: 10px; }
+  .error .msg { flex: 1; min-width: 0; }
+  .error .dismiss { flex: none; padding: 3px; border: none; background: none; color: #7f1d1d; border-radius: 50%; cursor: pointer; display: flex; align-items: center; }
+  .error .dismiss:hover { background: #f8d7d7; }
 
   .main { flex: 1; min-height: 0; display: flex; gap: 16px; align-items: stretch; }
   .tree-pane { flex: 0 0 240px; min-width: 0; display: flex; flex-direction: column; }
