@@ -58,6 +58,32 @@ def test_dirs(client, workdir):
     assert names == ["subdir"]
 
 
+def test_unreadable_dir_403_with_friendly_detail(client, monkeypatch, tmp_path):
+    """A directory that exists but can't be read (e.g. macOS TCC blocking an
+    external volume) must yield a 403 with an actionable message, not a raw
+    PermissionError traceback + opaque 500.
+    """
+    import backend.api.routes as routes
+
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    real_listdir = os.listdir
+
+    def guarded(path):
+        if os.path.abspath(path) == str(locked):
+            raise PermissionError(1, "Operation not permitted", path)
+        return real_listdir(path)
+
+    monkeypatch.setattr(routes.os, "listdir", guarded)
+
+    for endpoint in ("/api/list", "/api/dirs"):
+        r = client.get(endpoint, params={"path": str(locked)})
+        assert r.status_code == 403
+        detail = r.json()["detail"]
+        assert "permission denied" in detail
+        assert str(locked) in detail  # says *which* path failed
+
+
 # --- preview --------------------------------------------------------------- #
 
 def test_preview_add_prefix(client, workdir):
