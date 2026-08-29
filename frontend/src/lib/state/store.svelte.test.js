@@ -128,6 +128,22 @@ describe("dialogs", () => {
     showDialog({ title: "T", message: "M" });
     expect(state.dialog.variant).toBe("info");
   });
+
+  // RenameButton drives the whole flow off this promise — `await showDialog()`
+  // must settle with the clicked button id (or dismissId). (The Dialog component
+  // separately sets `open=false` on click/Escape — covered by the component test.)
+  it("showDialog resolves with the chosen button id", async () => {
+    const { state, showDialog } = await freshStore();
+    const p = showDialog({
+      title: "T",
+      message: "M",
+      buttons: [{ id: "ok", label: "Ok" }, { id: "abort", label: "Abort" }],
+      dismissId: "abort",
+    });
+    expect(state.dialog.open).toBe(true);
+    state.dialog.resolve("abort");
+    await expect(p).resolves.toBe("abort");
+  });
 });
 
 describe("api-backed flows (mocked api)", () => {
@@ -189,6 +205,66 @@ describe("api-backed flows (mocked api)", () => {
     await performRename();
     expect(api.rename).toHaveBeenCalledTimes(1);
     expect(state.renaming).toBe(false);
+  });
+});
+
+describe("navigation", () => {
+  it("openHome loads the home directory", async () => {
+    const { state, openHome } = await freshStore();
+    api.homeDir.mockResolvedValue({ path: "/home" });
+    api.listFiles.mockResolvedValue({ files: [] });
+    await openHome();
+    expect(api.homeDir).toHaveBeenCalledTimes(1);
+    expect(state.currentPath).toBe("/home");
+  });
+
+  it("openHome records the error on failure", async () => {
+    const { state, openHome } = await freshStore();
+    api.homeDir.mockRejectedValue(new Error("boom"));
+    await openHome();
+    expect(state.error).toContain("boom");
+  });
+
+  it("goUp moves to the parent directory", async () => {
+    const { state, goUp } = await freshStore();
+    api.listFiles.mockResolvedValue({ files: [] });
+    state.currentPath = "/tmp/somewhere";
+    goUp();
+    await new Promise((r) => setTimeout(r, 0)); // settle the fire-and-forget loadDir
+    expect(api.listFiles).toHaveBeenCalledWith("/tmp");
+    expect(state.currentPath).toBe("/tmp");
+  });
+
+  it("goUp tolerates trailing slashes", async () => {
+    const { state, goUp } = await freshStore();
+    api.listFiles.mockResolvedValue({ files: [] });
+    state.currentPath = "/tmp/somewhere/";
+    goUp();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(state.currentPath).toBe("/tmp");
+  });
+
+  it("goUp is a no-op at the filesystem root and on an empty path", async () => {
+    const { state, goUp } = await freshStore();
+    api.listFiles.mockResolvedValue({ files: [] });
+    state.currentPath = "/";
+    goUp();
+    expect(api.listFiles).not.toHaveBeenCalled();
+    state.currentPath = "";
+    goUp();
+    expect(api.listFiles).not.toHaveBeenCalled();
+  });
+});
+
+describe("preview guards", () => {
+  it("refreshPreview with no selection clears previews without calling the API", async () => {
+    const { state, refreshPreview } = await freshStore();
+    state.files = [...FILES];
+    state.currentPath = "/tmp";
+    state.previews = { "a.txt": {} };
+    await refreshPreview();
+    expect(api.preview).not.toHaveBeenCalled();
+    expect(state.previews).toEqual({});
   });
 });
 
