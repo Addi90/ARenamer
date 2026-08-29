@@ -182,7 +182,10 @@
   tr.duplicate td { background: color-mix(in srgb, var(--danger) 4%, transparent); color: var(--danger); }
   tr.duplicate:hover td { background: color-mix(in srgb, var(--danger) 12%, transparent); }
 
-  .col-check { width: 34px; text-align: center; }
+  /* No side padding: an 18px checkbox must not overflow the 34px cell —
+     overflowing inline content triggers a stray "…" from the cell's
+     text-overflow: ellipsis. */
+  .col-check { width: 34px; text-align: center; padding-left: 0; padding-right: 0; }
   .col-arrow { width: 20px; text-align: center; color: var(--faint); }
   .badge {
     display: inline-block; margin-right: 6px; padding: 0 6px;
