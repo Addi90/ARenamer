@@ -101,5 +101,5 @@ This project is licensed under the [GNU General Public License v3](LICENSE) — 
 
 ---
 
-*This project (v0.1.0) was entirely ported from Qt/C++ by Qwen 3.8 27B running locally, development continues exclusively with the use of local LLMs.*
-*Setup: Apple MacBook Pro M5 Pro 48GB with Opencode, LMStudio or oMLX*
+*This project (v0.1.0) was entirely ported from Qt/C++ by Qwen 3.8 27B running locally, development continues using local LLMs.*
+*Setup: Apple MacBook Pro M5 Pro 48GB with Pi Agent, LMStudio or oMLX*

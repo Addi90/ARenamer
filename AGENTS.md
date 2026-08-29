@@ -167,9 +167,9 @@ python -m pytest tests/ -v                   # backend suite, from repo root
 cd frontend && npm install
 npm run dev                                  # Vite :5173 (proxies /api → :8000)
 npm run build                                # → ../backend/static
-npm run test                                 # vitest: 5 files, 48 tests
-                                             #   (lib/config, lib/i18n/languages, lib/state/store,
-                                             #    components/DirectoryTree, components smoke)
+npm run test                                 # vitest: 7 files, 98 tests
+                                             #   (lib/config, lib/api, lib/i18n/languages, lib/state/store,
+                                             #    components/DirectoryTree, components smoke, modifiers smoke)
 ./do test                                    # pytest + vitest in one command
 ```
 
