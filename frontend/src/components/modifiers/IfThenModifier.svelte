@@ -6,7 +6,7 @@
   // the card frame lives in ModifierCard.
 </script>
 
-<section class="controls">
+<fieldset class="controls" disabled={!state.config.ifthen.enabled}>
   <div class="row">
     <span class="tag" title={t("ifthen.condTitle")}>{t("ifthen.ifTag")}</span>
     <select
@@ -35,4 +35,4 @@
       </label>
     {/if}
   </div>
-</section>
+</fieldset>

@@ -41,8 +41,9 @@ Rules:
 
 ## 2. The seven modifiers
 
-Each is independently toggleable (✓/✗ indicator), its controls grey out when disabled,
-and its card is drag-reorderable.
+Each is independently toggleable (✓/✗ indicator); when off its controls grey out **and are
+disabled** — a `<fieldset disabled>` wrapper cascading a real disabled state to every input
+(CSS only adds the opacity cue) — and its card is drag-reorderable.
 
 | Modifier | What it does | Notes |
 |---|---|---|
@@ -53,6 +54,9 @@ and its card is drag-reorderable.
 | **Add** | prefix, suffix, insert-at-position | insert applies first, then `prefix + name + suffix` |
 | **Counting** | start number, zero-padding (`001`), as prefix / suffix / insert | no separator (faithful: `name01`); combine with **Add** for a dash |
 | **Date** | format DD-MM-YYYY / YYYY-MM-DD / MM-DD-YYYY, date separator, optional **name separator** (default empty = direct concat, faithful), source created/mtime/today/custom (+picker), prefix/suffix/insert | never leaves a dangling separator at an edge or against an empty base |
+
+Sub-option inputs follow one rule: mode-only inputs render conditionally (`{#if}`),
+persistent-value inputs (Remove's range) stay visible and use real `disabled` attributes.
 
 ## 3. Rename workflow (safety)
 
@@ -66,7 +70,8 @@ whose new name differs → **"Successfully renamed N Item(s)!"**
 ## 4. Behavior decisions vs the original (keep unless explicitly told otherwise)
 
 - **Fixed:** Replace double-application; preview shows the full name (base + extension);
-  dot-files are fully renameable; dialogs say "Item(s)".
+  dot-files are fully renameable; dialogs say "Item(s)"; disabled modifier panels are a real
+  `<fieldset disabled>` (was a CSS-only grey-out — keyboard users could still Tab in and edit).
 - **Preserved:** If-Then condition on the original base; list-order numbering; no
   separator around numbers; `str.title` apostrophe quirk.
 - **Added (beyond the original):** Case modifier; directory renaming (typed `/api/list` +

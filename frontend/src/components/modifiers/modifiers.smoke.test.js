@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 /**
  * Smoke tests for the seven modifier panels (Replace, Case, If-Then, Remove,
- * Add, Counting, Date). Every panel shares the same skeleton — a `.panel`
- * section whose header toggle binds to `state.config.<key>.enabled`, an
- * `active` border class while on, and a `.controls` block that gets the
- * `disabled` class while off — so the generic toggle behaviour is checked for
- * all seven at once, plus a few panel-specific bindings (including the
- * conditional inputs: If-Then / Counting / Date insert position, Remove
- * range, Date custom picker).
+ * Add, Counting, Date). Every panel is a `<fieldset class="controls">` whose
+ * disabled attribute mirrors `state.config.<key>.enabled` (the enable toggle
+ * itself lives in ModifierCard) — so the generic disabled-state behaviour is
+ * checked for all seven at once, plus a few panel-specific bindings
+ * (including the conditional inputs: If-Then / Counting / Date insert
+ * position, Remove range, Date custom picker).
  *
  * happy-dom crashes inside Svelte 5 checkbox mounting, hence jsdom.
  */
@@ -51,24 +50,20 @@ const PANELS = [
 ];
 
 it.each(PANELS)(
-  "%s panel: the toggle flips the active border and greys the controls",
+  "%s panel: the controls fieldset is disabled while the modifier is off",
   async (key, Comp) => {
     const { container } = render(Comp);
-    const panel = container.querySelector(".panel");
-    const toggle = container.querySelector(".toggle input");
+    const controls = container.querySelector(".controls");
+    expect(controls).toBeInstanceOf(HTMLFieldSetElement);
 
     // fresh default config: disabled
-    expect(toggle.checked).toBe(false);
     expect(state.config[key].enabled).toBe(false);
-    expect(panel.className).not.toContain("active");
-    expect(panel.querySelector(".controls").className).toContain("disabled");
+    await settle(); // the disabled attribute flushes asynchronously
+    expect(controls.disabled).toBe(true);
 
-    fireEvent.click(toggle);
-    expect(toggle.checked).toBe(true);
-    expect(state.config[key].enabled).toBe(true); // sync: the binding wrote the store
-    await settle(); // the active/disabled classes flush asynchronously
-    expect(panel.className).toContain("active");
-    expect(panel.querySelector(".controls").className).not.toContain("disabled");
+    state.config[key].enabled = true; // what the card's toggle writes
+    await settle();
+    expect(controls.disabled).toBe(false);
   }
 );
 
@@ -101,15 +96,14 @@ describe("CaseModifier", () => {
     expect(state.config.case.mode).toBe("snake");
   });
 
-  it("greys the controls again when the panel is disabled", async () => {
+  it("disables the controls again when the modifier is disabled", async () => {
     const { container } = render(CaseModifier);
-    const toggle = container.querySelector(".toggle input");
-    fireEvent.click(toggle); // enable
+    state.config.case.enabled = true; // enable
     await settle();
-    fireEvent.click(toggle); // disable again
+    state.config.case.enabled = false; // disable again
     await settle();
-    // the panels grey out via a .controls class (no per-input disabled attribute)
-    expect(container.querySelector(".controls").className).toContain("disabled");
+    // <fieldset disabled> cascades a real disabled state to every control
+    expect(container.querySelector(".controls").disabled).toBe(true);
   });
 });
 
@@ -210,15 +204,14 @@ describe("CountingModifier", () => {
     expect(container.querySelectorAll('input[type="number"]')).toHaveLength(3); // + insert position
   });
 
-  it("greys the controls again when the panel is disabled", async () => {
+  it("disables the controls again when the modifier is disabled", async () => {
     const { container } = render(CountingModifier);
-    const toggle = container.querySelector(".toggle input");
-    fireEvent.click(toggle); // enable
+    state.config.counting.enabled = true; // enable
     await settle();
-    fireEvent.click(toggle); // disable again
+    state.config.counting.enabled = false; // disable again
     await settle();
-    // the panels grey out via a .controls class (no per-input disabled attribute)
-    expect(container.querySelector(".controls").className).toContain("disabled");
+    // <fieldset disabled> cascades a real disabled state to every control
+    expect(container.querySelector(".controls").disabled).toBe(true);
   });
 });
 
@@ -248,14 +241,13 @@ describe("DateModifier", () => {
     expect(container.querySelectorAll('input[type="number"]')).toHaveLength(1); // + insert position
   });
 
-  it("greys the controls again when the panel is disabled", async () => {
+  it("disables the controls again when the modifier is disabled", async () => {
     const { container } = render(DateModifier);
-    const toggle = container.querySelector(".toggle input");
-    fireEvent.click(toggle); // enable
+    state.config.date.enabled = true; // enable
     await settle();
-    fireEvent.click(toggle); // disable again
+    state.config.date.enabled = false; // disable again
     await settle();
-    // the panels grey out via a .controls class (no per-input disabled attribute)
-    expect(container.querySelector(".controls").className).toContain("disabled");
+    // <fieldset disabled> cascades a real disabled state to every control
+    expect(container.querySelector(".controls").disabled).toBe(true);
   });
 });

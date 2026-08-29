@@ -6,7 +6,7 @@
   // the card frame lives in ModifierCard.
 </script>
 
-<section class="controls">
+<fieldset class="controls" disabled={!state.config.case.enabled}>
   <div class="row">
     <label>{t("case.mode")}
       <select bind:value={state.config.case.mode}>
@@ -23,4 +23,4 @@
       </select>
     </label>
   </div>
-</section>
+</fieldset>

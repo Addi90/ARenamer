@@ -6,7 +6,7 @@
   // the card frame lives in ModifierCard.
 </script>
 
-<section class="controls">
+<fieldset class="controls" disabled={!state.config.remove.enabled}>
   <div class="row">
     <label title={t("remove.firstTitle")}>{t("remove.first")}
       <input type="number" min="0" bind:value={state.config.remove.front} />
@@ -25,7 +25,7 @@
     </label>
     <label class="check"><input type="checkbox" bind:checked={state.config.remove.until_end} disabled={!state.config.remove.range_enabled} /> {t("remove.untilEnd")}</label>
   </div>
-</section>
+</fieldset>
 
 <style>
   .dimmed { opacity: 0.45; }

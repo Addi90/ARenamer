@@ -137,11 +137,18 @@ input[type="checkbox"] {
   font-family: var(--mono);
 }
 
-/* Shared modifier-panel layout (each modifier's <section class="controls">). */
+/* Shared modifier-panel layout (each modifier's root is a
+   <fieldset class="controls"> — the reset neutralises the browser's
+   default fieldset border/padding; `disabled` cascades a real disabled
+   state to every control while the modifier is off). */
 .controls {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
 }
 .controls .row {
   display: flex;
