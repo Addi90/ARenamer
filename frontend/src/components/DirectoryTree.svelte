@@ -149,13 +149,17 @@
 </div>
 
 <style>
+  /* Borderless scroll area inside App's tree pane (the pane draws the card). */
   .tree {
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    background: #fff;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding: 4px;
-    min-height: 120px;
   }
-  .placeholder { color: #9aa0ab; font-size: 0.85rem; padding: 12px; text-align: center; }
+  .placeholder {
+    color: var(--faint);
+    font-size: 12.5px;
+    padding: 12px;
+    text-align: center;
+  }
 </style>

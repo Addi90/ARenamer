@@ -27,18 +27,20 @@
 
 <div class="filelist">
   <div class="toolbar">
-    <label class="toggle">
-      <input type="checkbox" checked={state.showFiles} onchange={(e) => setShowFiles(e.currentTarget.checked)} />
-      {t("fileList.toggleFiles")}
-    </label>
-    <label class="toggle">
-      <input type="checkbox" checked={state.showDirs} onchange={(e) => setShowDirs(e.currentTarget.checked)} />
-      {t("fileList.toggleDirs")}
-    </label>
-    <span class="divider"></span>
-    <button onclick={selectAll}>{t("fileList.selectAll")}</button>
-    <button onclick={clearSelection} disabled={state.selection.length === 0}>{t("fileList.clear")}</button>
+    <!-- Independent view chips: each type shows/hides on its own. -->
+    <div class="chips">
+      <button class="chip" class:on={state.showFiles} type="button" aria-pressed={state.showFiles}
+              aria-label={t("fileList.toggleFiles")} onclick={() => setShowFiles(!state.showFiles)}>
+        {t("fileList.toggleFiles")}
+      </button>
+      <button class="chip" class:on={state.showDirs} type="button" aria-pressed={state.showDirs}
+              aria-label={t("fileList.toggleDirs")} onclick={() => setShowDirs(!state.showDirs)}>
+        {t("fileList.toggleDirs")}
+      </button>
+    </div>
     <span class="spacer"></span>
+    <button class="ghost" type="button" onclick={selectAll}>{t("fileList.selectAll")}</button>
+    <button class="ghost" type="button" disabled={state.selection.length === 0} onclick={clearSelection}>{t("fileList.clear")}</button>
     {@render actions?.()}
   </div>
 
@@ -50,6 +52,7 @@
             <input type="checkbox" aria-label={t("fileList.selectAll")} checked={allSelected} onchange={onHeaderToggle} />
           </th>
           <th class="col-name">{t("fileList.name")}</th>
+          <th class="col-arrow" aria-hidden="true"></th>
           <th class="col-new">{t("fileList.newName")}</th>
         </tr>
       </thead>
@@ -66,14 +69,15 @@
               {#if file.type === "dir"}<span class="badge">{t("fileList.typeDir")}</span>{/if}
               {file.name}
             </td>
-            <td class="col-new" class:changed={prev?.changed} class:muted={!selected} title={prev ? prev.full_new_name : file.name}>
+            <td class="col-arrow" aria-hidden="true">→</td>
+            <td class="col-new" class:changed={prev?.changed} title={prev ? prev.full_new_name : file.name}>
               {prev ? prev.full_new_name : file.name}{duplicate ? " ⚠" : ""}
             </td>
           </tr>
         {/each}
         {#if visible.length === 0}
           <tr class="empty">
-            <td colspan="3">{state.busy ? t("common.loading") : t("fileList.empty")}</td>
+            <td colspan="4">{state.busy ? t("common.loading") : t("fileList.empty")}</td>
           </tr>
         {/if}
       </tbody>
@@ -82,75 +86,128 @@
 </div>
 
 <style>
-  /* Fills the center column of App's three-pane layout; the table scrolls inside. */
+  /* Fills the center pane of App's three-pane layout; the table scrolls inside. */
   .filelist { display: flex; flex-direction: column; min-height: 0; height: 100%; }
 
-  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-  .toolbar .toggle { display: flex; align-items: center; gap: 4px; font-size: 0.85rem; color: #374151; cursor: pointer; }
-  .toolbar .toggle input { margin: 0; }
-  .toolbar .divider { width: 1px; height: 18px; background: #e5e7eb; }
-  .toolbar button { padding: 6px 12px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
-  .toolbar button:hover:not(:disabled) { background: #f3f4f6; }
-  .toolbar button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    flex: none;
+  }
+  .chips { display: flex; gap: 6px; }
+  .chip {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  }
+  .chip:hover {
+    background: var(--surface-2);
+    border-color: var(--border-strong);
+    color: var(--text);
+  }
+  .chip:active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .chip.on {
+    background: var(--accent-soft);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    color: var(--accent-bright);
+    font-weight: 600;
+  }
+  .ghost {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: var(--r-md);
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  }
+  .ghost:hover:not(:disabled) {
+    background: var(--surface-2);
+    border-color: var(--border-strong);
+    color: var(--text);
+  }
+  .ghost:active:not(:disabled) { transform: translateY(1px); }
   .spacer { flex: 1; }
 
-  .table-wrap {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-  }
+  .table-wrap { flex: 1; min-height: 0; overflow: auto; }
   .table-wrap.empty { min-height: 0; }
   .files {
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
-    font-size: 0.9rem;
+    font-size: 13px;
   }
   thead th {
     text-align: left;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: 11px;
     font-weight: 600;
-    color: #374151;
-    background: #f9fafb;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--faint);
+    background: var(--surface-2);
     padding: 8px 12px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
   }
   tbody td {
-    padding: 6px 12px;
-    border-bottom: 1px solid #f1f3f5;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr { cursor: pointer; }
-  tbody tr:hover { background: #f5f8ff; }
-  tr.selected { background: #eef4ff; }
-  tr.selected:hover { background: #e3edff; }
-  tr.duplicate td { background: #fdecec; color: #7f1d1d; }
-  tr.duplicate:hover td { background: #fadbd8; }
+  tbody tr:hover { background: var(--row-hover); }
+  tr.selected { background: var(--sel); }
+  tr.selected:hover { background: color-mix(in srgb, var(--sel), var(--row-hover)); }
+  tr.duplicate td { background: color-mix(in srgb, var(--danger) 4%, transparent); color: var(--danger); }
+  tr.duplicate:hover td { background: color-mix(in srgb, var(--danger) 12%, transparent); }
 
-  .col-check { width: 28px; text-align: center; }
+  .col-check { width: 34px; text-align: center; }
+  .col-arrow { width: 20px; text-align: center; color: var(--faint); }
   .badge {
-    display: inline-block; margin-right: 6px; padding: 0 5px;
-    font-size: 0.7rem; line-height: 15px; border-radius: 8px;
-    background: #eef4ff; color: #1d4ed8; border: 1px solid #c7d8fe;
+    display: inline-block; margin-right: 6px; padding: 0 6px;
+    font-size: 10.5px; line-height: 17px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent-bright);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
   }
-  .col-name { font-family: ui-monospace, "SF Mono", Menlo, monospace; white-space: nowrap; }
-  .col-new { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-  .col-new.changed { color: #15803d; font-weight: 600; }
-  .col-new.muted { color: #b6bcc6; }
+  .col-name { font-family: var(--mono); color: var(--text); }
+  .col-new { font-family: var(--mono); color: var(--muted); }
+  .col-new.changed { color: var(--success); font-weight: 600; }
+  /* Changed names carry a small dot ahead of the new name. */
+  .col-new.changed::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+    margin-right: 7px;
+    vertical-align: 1px;
+  }
 
   tr.empty td {
     text-align: center;
-    color: #9aa0ab;
+    color: var(--faint);
     padding: 24px;
     cursor: default;
   }

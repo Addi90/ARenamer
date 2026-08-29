@@ -21,3 +21,5 @@ build/smoke/
 .DS_Store
 .idea/
 .vscode/
+outputs/
+graphify-out/
