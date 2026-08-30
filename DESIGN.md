@@ -5,7 +5,7 @@ directory renamer: directory tree · file list with live previews · 7-step modi
 pipeline. Accent family is derived from the product logo (`frontend/public/favicon.svg`,
 purple folder gradient `#a855f7 → #6d28d9`).
 
-Reference implementation of these tokens: `frontend/prototype/index.html`.
+Reference implementation of these tokens: `frontend/src/index.css` (the committed SPA's stylesheet).
 
 ```yaml
 name: A-Renamer

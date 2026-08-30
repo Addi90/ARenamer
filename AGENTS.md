@@ -41,8 +41,9 @@ Rules:
 
 ## 2. The seven modifiers
 
-Each is independently toggleable (✓/✗ indicator), its controls grey out when disabled,
-and its card is drag-reorderable.
+Each is independently toggleable (✓/✗ indicator); when off its panel **collapses** (hidden) and
+its `<fieldset disabled>` root keeps every control in a real disabled state (for assistive
+tech) — and its card is drag-reorderable.
 
 | Modifier | What it does | Notes |
 |---|---|---|
@@ -53,6 +54,9 @@ and its card is drag-reorderable.
 | **Add** | prefix, suffix, insert-at-position | insert applies first, then `prefix + name + suffix` |
 | **Counting** | start number, zero-padding (`001`), as prefix / suffix / insert | no separator (faithful: `name01`); combine with **Add** for a dash |
 | **Date** | format DD-MM-YYYY / YYYY-MM-DD / MM-DD-YYYY, date separator, optional **name separator** (default empty = direct concat, faithful), source created/mtime/today/custom (+picker), prefix/suffix/insert | never leaves a dangling separator at an edge or against an empty base |
+
+Sub-option inputs follow one rule: mode-only inputs render conditionally (`{#if}`),
+persistent-value inputs (Remove's range) stay visible and use real `disabled` attributes.
 
 ## 3. Rename workflow (safety)
 
@@ -66,7 +70,9 @@ whose new name differs → **"Successfully renamed N Item(s)!"**
 ## 4. Behavior decisions vs the original (keep unless explicitly told otherwise)
 
 - **Fixed:** Replace double-application; preview shows the full name (base + extension);
-  dot-files are fully renameable; dialogs say "Item(s)".
+  dot-files are fully renameable; dialogs say "Item(s)"; disabled modifier panels are a real
+  `<fieldset disabled>` and, in the modern UI, collapsed (was a CSS-only grey-out — keyboard
+  users could still Tab in and edit).
 - **Preserved:** If-Then condition on the original base; list-order numbering; no
   separator around numbers; `str.title` apostrophe quirk.
 - **Added (beyond the original):** Case modifier; directory renaming (typed `/api/list` +
@@ -81,6 +87,7 @@ run.py                 # one-command launcher (desktop window / :8000 web)
 do                     # release tooling, pure stdlib: bump / tag / changelog / build / test
 pyproject.toml         # single source of version truth (PyInstaller spec + CI version-sync);
                        #   also pip-installable (pip install -e . -> `arenamer`)
+DESIGN.md              # design system: tokens, two themes (dark default), elevation, state contract
 plan.md                # historical planning doc (directory renaming; shipped in 0.3.0 — don't re-execute)
 requirements*.txt      # runtime (fastapi, uvicorn, pywebview) / -dev (+pytest) / -build (+pyinstaller, cairosvg, pillow)
 changelog.md           # per-tag sections written by `do bump`
@@ -90,9 +97,11 @@ backend/
 └── engine/            # PURE engine: models.py (Config, RenameFile + 7 modifier configs, to/from_dict),
                        #   pipeline.py, add remove replace case number ifthen date
 frontend/src/
-├── App.svelte         # 3-pane layout (tree | file list | modifier sidebar), header + language
-│                      #   switcher, path bar (Home/Up/Open), dismissible error banner, dialog host,
-│                      #   debounced preview $effect; page never scrolls (each pane does), stacked below ~980px
+├── index.css          # design tokens (two themes, dark default) + global state contract, per DESIGN.md
+├── App.svelte         # 3-pane layout (tree | file list | modifier sidebar), header (language + theme
+│                      #   toggle), breadcrumb path bar (+ path input / Open), dismissible error banner,
+│                      #   dialog host, debounced preview $effect; page never scrolls (each pane does),
+│                      #   stacked below ~980px
 ├── lib/state/store.svelte.js   # THE single $state store + all actions (see §6)
 ├── lib/api.js         # fetch client for /api/*
 ├── lib/config.js      # defaultConfig() + sanitizeConfig()
@@ -142,6 +151,11 @@ Workflow: UI calls `/check` (blocking warning) → its own confirm dialog → `/
   `.svelte*` files).
 - **Live preview:** debounced `$effect` in `App.svelte` re-runs `/api/preview` on any
   config / selection / directory change.
+- **Theming:** dark is the default; the header toggle flips `data-theme` on `<html>` and
+  persists `"arenamer.theme"` to localStorage — `frontend/index.html` re-applies that key
+  in an inline pre-paint script so there is no flash. All colours come from the CSS
+  variables in `index.css` (the `DESIGN.md` token set); components use `var(--token)`
+  only — no off-system hex, no ad-hoc shadows.
 - `sanitizeConfig()` coerces every numeric field to int before each API call (Svelte binds
   a cleared `<input type="number">` to `null`). Keep it in sync with `defaultConfig()`
   and the backend `Config` — the three shapes must mirror each other.
@@ -167,9 +181,9 @@ python -m pytest tests/ -v                   # backend suite, from repo root
 cd frontend && npm install
 npm run dev                                  # Vite :5173 (proxies /api → :8000)
 npm run build                                # → ../backend/static
-npm run test                                 # vitest: 5 files, 48 tests
-                                             #   (lib/config, lib/i18n/languages, lib/state/store,
-                                             #    components/DirectoryTree, components smoke)
+npm run test                                 # vitest: 7 files, 98 tests
+                                             #   (lib/config, lib/api, lib/i18n/languages, lib/state/store,
+                                             #    components/DirectoryTree, components smoke, modifiers smoke)
 ./do test                                    # pytest + vitest in one command
 ```
 
@@ -235,4 +249,5 @@ Release flow: branch `release/vX.Y.Z` off `develop` (conventional commits) → P
 - New config fields: add them to backend `Config`, `defaultConfig()` **and**
   `sanitizeConfig()` (numeric ones) so all three shapes stay in sync.
 - Never import the store as bare `state` + write `$state` in a component (§6 trap).
-- **Open:** dark mode and keyboard shortcuts (only remaining polish items).
+- **Open:** keyboard shortcuts (only remaining polish item; dark mode shipped with the
+  modern UI — `DESIGN.md` token set + header theme toggle, dark default).

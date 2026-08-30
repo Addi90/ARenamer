@@ -6,7 +6,7 @@
   // the card frame lives in ModifierCard.
 </script>
 
-<section class="controls">
+<fieldset class="controls" disabled={!state.config.add.enabled}>
   <label>{t("add.prefix")}
     <input class="mono" type="text" bind:value={state.config.add.prefix} placeholder={t("add.prefixPh")} />
   </label>
@@ -21,4 +21,4 @@
       <input type="number" min="0" bind:value={state.config.add.insert_pos} />
     </label>
   </div>
-</section>
+</fieldset>

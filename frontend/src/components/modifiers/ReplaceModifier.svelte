@@ -8,7 +8,7 @@
   // ModifierCard — this panel only holds the modifier's controls.
 </script>
 
-<section class="controls">
+<fieldset class="controls" disabled={!state.config.replace.enabled}>
   <label>{t("replace.search")}
     <input class="mono" type="text" bind:value={state.config.replace.search} placeholder={t("replace.searchPh")} />
   </label>
@@ -19,4 +19,4 @@
     <label class="check"><input type="checkbox" bind:checked={state.config.replace.regex} /> {t("common.regex")}</label>
     <label class="check"><input type="checkbox" bind:checked={state.config.replace.case_sensitive} /> {t("common.caseSensitive")}</label>
   </div>
-</section>
+</fieldset>

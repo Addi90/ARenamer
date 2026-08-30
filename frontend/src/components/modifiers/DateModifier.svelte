@@ -6,7 +6,7 @@
   // the card frame lives in ModifierCard.
 </script>
 
-<section class="controls">
+<fieldset class="controls" disabled={!state.config.date.enabled}>
   <div class="row">
     <!-- Format options are codes (DD-MM-YYYY …), identical in both languages. -->
     <select bind:value={state.config.date.format}>
@@ -44,7 +44,7 @@
       </label>
     {/if}
   </div>
-</section>
+</fieldset>
 
 <style>
   .sep input[type="text"] { flex: 0 1 90px; width: auto; }

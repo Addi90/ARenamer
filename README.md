@@ -16,7 +16,7 @@ The user has various ways of adding, removing and replacing content in a filenam
 - **Date** — add a date (created, last modified, today, or custom) in several formats
 - **Counting** — add a running number (start value, zero-padding) in list order
 
-Modifiers are applied in a pipeline (`Replace → Case → If-Then → Remove → Add → Counting → Date`) whose order you can also customize by dragging the modifier cards, each modifier independently toggleable, with an instant per-entry preview. Renaming is safe: a duplicate check runs first (blocking warning if any new name would clobber an existing entry — cross-type, so renaming a folder onto a file or vice versa is caught too), followed by a confirmation dialog. Directories are treated as *extension-less* entries: a folder named `backup.tar` renames to `x_backup.tar` (nothing is stripped). The UI is internationalized (German + English) with a runtime language switcher.
+Modifiers are applied in a pipeline (`Replace → Case → If-Then → Remove → Add → Counting → Date`) whose order you can also customize by dragging the modifier cards, each modifier independently toggleable, with an instant per-entry preview. Renaming is safe: a duplicate check runs first (blocking warning if any new name would clobber an existing entry — cross-type, so renaming a folder onto a file or vice versa is caught too), followed by a confirmation dialog. Directories are treated as *extension-less* entries: a folder named `backup.tar` renames to `x_backup.tar` (nothing is stripped). The UI is internationalized (German + English) with a runtime language switcher, and offers a light/dark theme toggle (dark is the default).
 
 ## Quick start
 
@@ -79,6 +79,7 @@ arenamer/
 ├── run.py                     # one-command launcher (desktop window, or web fallback)
 ├── do                         # stdlib-only release tooling (bump/tag/changelog/build/test)
 ├── pyproject.toml             # single source of truth for name + version
+├── DESIGN.md                  # design system: tokens, themes, elevation, state contract
 ├── changelog.md               # per-version sections (written by `do bump`)
 ├── backend/
 │   ├── main.py                # FastAPI app: static mount, /api/* routes, pywebview bootstrap
@@ -101,5 +102,5 @@ This project is licensed under the [GNU General Public License v3](LICENSE) — 
 
 ---
 
-*This project (v0.1.0) was entirely ported from Qt/C++ by Qwen 3.8 27B running locally, development continues exclusively with the use of local LLMs.*
-*Setup: Apple MacBook Pro M5 Pro 48GB with Opencode, LMStudio or oMLX*
+*This project (v0.1.0) was entirely ported from Qt/C++ by Qwen 3.8 27B running locally, development continues using local LLMs.*
+*Setup: Apple MacBook Pro M5 Pro 48GB with Pi Agent, LMStudio or oMLX*

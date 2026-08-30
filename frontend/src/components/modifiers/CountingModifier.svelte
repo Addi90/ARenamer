@@ -6,7 +6,7 @@
   // the card frame lives in ModifierCard.
 </script>
 
-<section class="controls">
+<fieldset class="controls" disabled={!state.config.counting.enabled}>
   <div class="row">
     <select bind:value={state.config.counting.position}>
       <option value="prefix">{t("position.prefix")}</option>
@@ -25,4 +25,4 @@
       <input type="number" min="0" bind:value={state.config.counting.insert_pos} />
     </label>
   {/if}
-</section>
+</fieldset>
