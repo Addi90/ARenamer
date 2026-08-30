@@ -2,6 +2,11 @@
 
 All notable changes to the A-Renamer Tool are documented in this file.
 
+## [0.3.1] - 2026-08-30
+
+### Other
+- Release/v0.4.0 (#22) (596b4ef)
+
 ## [0.3.0] - 2026-08-28
 
 ### Features
