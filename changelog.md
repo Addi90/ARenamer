@@ -2,6 +2,78 @@
 
 All notable changes to the A-Renamer Tool are documented in this file.
 
+## [0.4.0] - 2026-08-30
+
+### Features
+- feat: support custom modifier pipeline order in config (4e3a4d3)
+- feat: drag-and-drop modifier ordering in sidebar (5945fd1)
+- feat: show reset-order button when the modifier order was changed (ae978b4)
+- feat(engine): support renaming directories as extension-less entries (020a12f)
+- feat(api): list directories with type, accept dirs in preview/check/rename (c237921)
+- feat(frontend): view toggles for files and directories in the store (7400b3a)
+- feat(frontend): directory rows with type badge, view toggles, tree refresh (83ebeed)
+- feat(frontend): add app logo and favicon (rounded purple folder + Helvetica 'A') (28a3913)
+- feat(build): use the app logo as the native app icon (macOS .app + Windows exe) (76820a6)
+- feat(ui): dismissible error banner (f0ffdef)
+- feat: modern UI — design tokens, dark mode, APCA-tuned contrast (adb7108)
+
+### Bug Fixes
+- fix: use children snippet instead of deprecated slot in ModifierCard (f70e132)
+- fix: mark insertion slot (between cards) while dragging modifiers (4e40732)
+- fix: keep drop markers of the first modifier card visible (f0621af)
+- fix(ci): add httpx2 to dev requirements (starlette TestClient needs it in clean envs) (ce385a2)
+- fix(engine): treat dot-files as extension-less (whole name is the base) (90eb526)
+- fix(frontend): resolve a11y warnings in the drag-and-drop modifier card (f53235d)
+- fix(ui): anchor the header subtitle to the title baseline (7af3628)
+- fix(build): never fail the build on icon (re)generation (c9c7c0a)
+- fix(ui): directory tree no longer freezes at one level (ee02e25)
+- fix(api): return a friendly 403 for unreadable directories (66c520d)
+- fix: stray ellipsis next to file-list checkboxes (b459dcf)
+- fix: use a real disabled state for disabled modifier panels (3973c83)
+- fix: place Remove's range toggle on its own row (7c5e32a)
+- fix: silence two svelte build warnings (f85e7df)
+
+### Documentation
+- docs: document adjustable modifier order (7087744)
+- docs: document frontend test workflow (c1d22e5)
+- docs: document CI workflows (ci/release/build) in README + AGENTS.md (10cf22e)
+- docs: document directory renaming and list view toggles (972cafb)
+- docs: trim AGENTS.md to the necessary — fix stale spots, drop filler (4b4ce6c)
+- docs: align AGENTS.md and README with v0.3.0 (9585999)
+- docs: sync AGENTS.md vitest counts to the new test suite (3dc5a92)
+- docs: sync AGENTS.md, README and DESIGN.md with the modern UI branch (b95d940)
+
+### Tests
+- test: add vitest + testing-library scaffolding for frontend (2cd912d)
+- test: cover config sanitize and i18n key parity (3ec8f66)
+- test: unit test store actions with mocked api (b64e173)
+- test: smoke test FileList, Dialog, RenameButton (676b3fb)
+- test: move pytest suite to tests/backend/, keep frontend tests co-located (0072531)
+- test: tighten frontend tests to their actual contracts (649af8b)
+- test: add missing frontend coverage (api client + modifier panels) (403e97c)
+
+### Build & Packaging
+- build: run frontend vitest suite in 'do test' (7c5ad7f)
+
+### CI
+- ci: add GitHub Actions development pipeline (pytest, vitest, SPA build, version sync) (09c3465)
+- ci: add release workflow (do bump + do tag on master merge) and build workflow (3-OS PyInstaller, smoke test, GitHub Release) (194a8d0)
+
+### Other
+- Merge branch 'release/v0.2.0' into develop (b5435bb)
+- Merge pull request #4 from Addi90/feat/flexible-modifier-order (16bbe1d)
+- Merge pull request #5 from Addi90/feat/frontend-tests (48a7f15)
+- Merge pull request #8 from Addi90/feat/github-actions-for-development-and-release (dd1274a)
+- Merge pull request #9 from Addi90/feat/folder-editing (6770216)
+- Merge pull request #10 from Addi90/feat/add-logos-and-favicon (f5305c4)
+- Merge pull request #11 from Addi90/fix/icon-build-fallback (bcea52c)
+- Merge pull request #12 from Addi90/fix/tree-depth-and-permissions (ad3f2b9)
+- Merge branch 'master' into develop (a46e57d)
+- Merge pull request #19 from Addi90/docs/v0.3.0-doc-sync (b34d4ef)
+- Merge pull request #21 from Addi90/port/modern-ui (14556ed)
+- Merge pull request #20 from Addi90/test/frontend-hardening (ba21121)
+- Merge pull request #23 from Addi90/release/v0.4.0 (e270f24)
+
 ## [0.3.0] - 2026-08-28
 
 ### Features

@@ -126,8 +126,6 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
-  [data-theme="light"] .pill {
-    background: var(--accent-contrast);
-    color: var(--accent);
-  }
+  /* Light-theme pill override lives in index.css (global): an html-attribute
+     ancestor in scoped CSS trips svelte's css_unused_selector check. */
 </style>
