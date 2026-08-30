@@ -108,7 +108,11 @@
         <path d="M3 11.7V8h3.7" />
       </svg>
     </button>
-    <span class="grip" role="button" tabindex="0" onmousedown={startDrag} onclick={(e) => e.stopPropagation()} title={t("modifiers.dragHint")} aria-label={t("modifiers.dragHint")}>
+    <!-- Decorative (aria-hidden): dragging is a mouse-only affordance; the
+         accessible controls are step-head (toggle) and reset-mini (reset).
+         Keeping it focusable would add a tab stop that keyboard Enter can't use. -->
+    <span class="grip" aria-hidden="true" title={t("modifiers.dragHint")}
+          onmousedown={startDrag} onclick={(e) => e.stopPropagation()}>
       <svg viewBox="0 0 8 12" fill="currentColor" width="8" height="12" aria-hidden="true">
         <circle cx="2" cy="2" r="1.1" /><circle cx="6" cy="2" r="1.1" />
         <circle cx="2" cy="6" r="1.1" /><circle cx="6" cy="6" r="1.1" />

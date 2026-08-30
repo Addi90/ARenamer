@@ -188,3 +188,11 @@ input[type="checkbox"] {
 .controls .pos {
   flex: 0 0 auto;
 }
+
+/* RenameButton's pill: light theme uses white-on-purple (APCA 77.5) instead of
+   the dark theme's text/bg inversion. Global (unscoped) on purpose — an html
+   attribute ancestor inside component CSS trips svelte's unused-selector check. */
+[data-theme="light"] .pill {
+  background: var(--accent-contrast);
+  color: var(--accent);
+}
