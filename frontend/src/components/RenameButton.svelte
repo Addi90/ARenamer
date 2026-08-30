@@ -87,13 +87,45 @@
 </script>
 
 <button class="primary" disabled={disabled} onclick={onRename}>
-  {state.renaming ? t("rename.renaming") : `${t("rename.button")}${state.selection.length ? ` (${state.selection.length})` : ""}`}
+  {state.renaming ? t("rename.renaming") : t("rename.button")}
+  {#if !state.renaming && state.selection.length}
+    <span class="pill">{state.selection.length}</span>
+  {/if}
 </button>
 
 <style>
-  button { padding: 8px 14px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
-  button:hover:not(:disabled) { background: #f3f4f6; }
-  button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
-  button.primary:hover:not(:disabled) { background: #1d4ed8; }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid transparent;
+    background: var(--primary);
+    color: var(--primary-contrast);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: var(--shadow-btn);
+    transition: background 0.12s ease, transform 0.05s ease;
+  }
+  button.primary:hover:not(:disabled) { background: var(--primary-hover); }
+  button.primary:active:not(:disabled) { transform: translateY(1px); }
+  /* Selection count. Dark: near-white pill + ink (APCA 96) — accent on
+     accent-contrast is only 66; light theme overrides below (77.5). */
+  .pill {
+    display: grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--text);
+    color: var(--bg);
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Light-theme pill override lives in index.css (global): an html-attribute
+     ancestor in scoped CSS trips svelte's css_unused_selector check. */
 </style>

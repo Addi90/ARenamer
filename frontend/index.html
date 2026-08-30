@@ -1,9 +1,15 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
+    <script>
+      // Pre-paint theme (dark default) so there is no flash on load.
+      // App.svelte owns the toggle + persistence; this only reads what it saved.
+      try { document.documentElement.dataset.theme = localStorage.getItem("arenamer.theme") || "dark"; } catch {}
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>A-Renamer Tool</title>
+    <meta name="color-scheme" content="dark light" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

@@ -4,13 +4,14 @@
 export const en = {
   // header / path bar
   "app.title": "A-Renamer Tool",
-  "app.subtitle": "Select files and directories, configure modifiers, preview the new names, then rename.",
   "app.home": "Home",
   "app.homeTitle": "Open the home directory",
-  "app.up": "Up",
-  "app.upTitle": "Open the parent directory",
+  "app.theme": "Toggle theme",
   "app.open": "Open",
   "app.errorDismiss": "Dismiss error",
+
+  // breadcrumb path bar
+  "crumbs.aria": "Path",
 
   // language switcher (option labels stay in their own language)
   "lang.label": "Language",
@@ -25,6 +26,7 @@ export const en = {
   "modifiers.title": "Modifiers",
   "modifiers.dragHint": "Drag cards to change the pipeline order",
   "modifiers.resetOrder": "Reset order",
+  "modifiers.reset": "Reset",
 
   // file list
   "fileList.selectAll": "Select all",

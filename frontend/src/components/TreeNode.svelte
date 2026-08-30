@@ -68,7 +68,8 @@
 {/if}
 
 <style>
-  .row { display: flex; align-items: center; gap: 2px; padding-right: 8px; }
+  .row { display: flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: var(--r-sm); }
+  .row:hover { background: var(--row-hover); }
   .twisty {
     width: 18px;
     height: 20px;
@@ -76,11 +77,11 @@
     border: none;
     background: transparent;
     cursor: pointer;
-    color: #6b7280;
-    font-size: 0.8rem;
+    color: var(--faint);
+    font-size: 11px;
     padding: 0;
   }
-  .twisty:hover { color: #2563eb; }
+  .twisty:hover { color: var(--accent-bright); }
   .label {
     flex: 1;
     min-width: 0;
@@ -89,14 +90,16 @@
     text-align: left;
     font-family: inherit;
     cursor: pointer;
-    font-size: 0.85rem;
-    color: #374151;
+    font-size: 13px;
+    color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 2px 4px;
-    border-radius: 4px;
+    padding: 3px 6px;
+    border-radius: 6px;
+    transition: background 0.1s ease, color 0.1s ease;
   }
-  .label:hover { background: #f3f4f6; }
-  .label.current { background: #eef4ff; color: #1d4ed8; font-weight: 600; }
+  .label:hover { color: var(--text); }
+  .label.current { background: var(--accent-soft); color: var(--text); font-weight: 600; }
+  .label.current:hover { background: var(--accent-soft); }
 </style>

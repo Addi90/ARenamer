@@ -43,28 +43,44 @@
   .backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.45);
+    background: var(--scrim);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 100;
   }
   .box {
-    background: #fff;
-    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-lg);
     padding: 20px 24px;
     min-width: 320px;
     max-width: 480px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    box-shadow: var(--shadow);
   }
-  h2 { margin: 0 0 8px; font-size: 1.1rem; color: #1f2430; display: flex; align-items: center; gap: 8px; }
-  h2.warning { color: #b45309; }
-  .icon { font-size: 1.2rem; }
-  .msg { margin: 0 0 18px; color: #4b5563; font-size: 0.9rem; white-space: pre-line; }
+  h2 { margin: 0 0 8px; font-size: 15px; font-weight: 650; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  h2.warning { color: var(--danger); }
+  .icon { font-size: 15px; }
+  .msg { margin: 0 0 18px; color: var(--muted); font-size: 13px; white-space: pre-line; }
   .buttons { display: flex; justify-content: flex-end; gap: 8px; }
-  button { padding: 7px 16px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
-  button:hover { background: #f3f4f6; }
-  button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
-  button.primary:hover { background: #1d4ed8; }
+  button {
+    padding: 7px 16px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    border-radius: var(--r-md);
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.12s ease, border-color 0.12s ease;
+  }
+  button:hover { background: var(--surface-3); border-color: var(--border-strong); }
+  button:active { transform: translateY(1px); }
+  button.primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-contrast);
+    font-weight: 600;
+    box-shadow: var(--shadow-btn);
+  }
+  button.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
 </style>

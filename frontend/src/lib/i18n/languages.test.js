@@ -77,9 +77,9 @@ describe("language detection and t()", () => {
 
   it("interpolates {var} placeholders", async () => {
     const i18n = await loadI18n();
-    // Unknown keys fall back to the raw key, so any {var} in the key itself
-    // still gets substituted — a stable way to exercise the interpolation loop.
-    expect(i18n.t("rename.{n} files", { n: 5 })).toBe("rename.5 files");
+    // A real key with a placeholder ("Rename {n} Item(s)?) — interpolation runs
+    // on the current language's string.
+    expect(i18n.t("rename.confirmMsg", { n: 5 })).toBe("Rename 5 Item(s)?");
   });
 
   it("falls back to the raw key for unknown keys", async () => {
