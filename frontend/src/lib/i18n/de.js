@@ -5,13 +5,14 @@
 export const de = {
   // header / path bar
   "app.title": "A-Renamer Tool",
-  "app.subtitle": "Dateien und Verzeichnisse auswählen, Modifikatoren konfigurieren, neue Namen in der Vorschau prüfen und dann umbenennen.",
   "app.home": "Home",
   "app.homeTitle": "Das Home-Verzeichnis öffnen",
-  "app.up": "Hoch",
-  "app.upTitle": "Das übergeordnete Verzeichnis öffnen",
+  "app.theme": "Theme umschalten",
   "app.open": "Öffnen",
   "app.errorDismiss": "Fehler schließen",
+
+  // breadcrumb path bar
+  "crumbs.aria": "Pfad",
 
   // language switcher (option labels stay in their own language)
   "lang.label": "Sprache",
@@ -26,6 +27,7 @@ export const de = {
   "modifiers.title": "Modifikatoren",
   "modifiers.dragHint": "Karten per Drag & Drop umsortieren",
   "modifiers.resetOrder": "Reihenfolge zurücksetzen",
+  "modifiers.reset": "Zurücksetzen",
 
   // file list
   "fileList.selectAll": "Alle auswählen",

@@ -12,6 +12,7 @@ vi.mock("../api.js", () => ({
 }));
 
 import * as api from "../api.js";
+import { sanitizeConfig } from "../config.js";
 
 // `state` is a module-level $state singleton — every test gets a fresh module
 // (and therefore fresh state) via resetModules + dynamic import.
@@ -127,6 +128,22 @@ describe("dialogs", () => {
     showDialog({ title: "T", message: "M" });
     expect(state.dialog.variant).toBe("info");
   });
+
+  // RenameButton drives the whole flow off this promise — `await showDialog()`
+  // must settle with the clicked button id (or dismissId). (The Dialog component
+  // separately sets `open=false` on click/Escape — covered by the component test.)
+  it("showDialog resolves with the chosen button id", async () => {
+    const { state, showDialog } = await freshStore();
+    const p = showDialog({
+      title: "T",
+      message: "M",
+      buttons: [{ id: "ok", label: "Ok" }, { id: "abort", label: "Abort" }],
+      dismissId: "abort",
+    });
+    expect(state.dialog.open).toBe(true);
+    state.dialog.resolve("abort");
+    await expect(p).resolves.toBe("abort");
+  });
 });
 
 describe("api-backed flows (mocked api)", () => {
@@ -148,47 +165,39 @@ describe("api-backed flows (mocked api)", () => {
     expect(state.error).toContain("no such directory");
   });
 
-  it("refreshPreview calls /preview with selected files and stores the result", async () => {
+  it("refreshPreview calls /preview with the selected names (list order) and stores the result", async () => {
     const { state, toggleSelect, refreshPreview } = await freshStore();
     state.files = [...FILES];
-    state.path = "/tmp/somewhere"; // some guards key off the current path
     state.currentPath = "/tmp/somewhere";
     toggleSelect("a.txt");
     const canned = { "a.txt": { name: "a.txt", new_base: "A", ext: ".txt" } };
-    api.preview.mockResolvedValue(canned);
+    api.preview.mockResolvedValue({ previews: canned });
 
     await refreshPreview();
-    // refreshPreview may be internally debounced — give a pending timer room to fire.
-    await new Promise((r) => setTimeout(r, 250));
-    expect(api.preview).toHaveBeenCalled();
+    expect(api.preview).toHaveBeenCalledTimes(1);
     const payload = api.preview.mock.calls[0][0];
-    expect(payload).toHaveProperty("config");
-    // The /preview contract sends file names; accept name objects too.
-    const sent = payload.files.map((f) => (typeof f === "string" ? f : f?.name));
-    expect(sent).toEqual(["a.txt"]);
-    // How the store stores the response (previews key/shape) is UI-internal;
-    // the contract tested here is the /preview request the store builds.
+    // The /preview contract: names as plain strings in list order, plus the
+    // sanitized config (Svelte may have left number fields as null).
+    expect(payload.files).toEqual(["a.txt"]);
+    expect(payload.config).toEqual(sanitizeConfig(state.config));
+    expect(state.previews).toEqual(canned);
   });
 
   it("checkDuplicates stores the clobbering names", async () => {
     const { state, toggleSelect, checkDuplicates } = await freshStore();
     state.files = [...FILES];
-    state.path = "/tmp/somewhere";
     state.currentPath = "/tmp/somewhere";
     toggleSelect("a.txt");
     api.check.mockResolvedValue({ names: ["a.txt"] });
 
     await checkDuplicates();
-    await new Promise((r) => setTimeout(r, 250));
-    expect(api.check).toHaveBeenCalled();
-    // duplicateNames may be an array or a Set — normalize before comparing.
-    expect([...(state.duplicateNames ?? [])]).toEqual(["a.txt"]);
+    expect(api.check).toHaveBeenCalledTimes(1);
+    expect(state.duplicateNames).toEqual(["a.txt"]);
   });
 
   it("performRename calls /rename and clears the renaming flag", async () => {
     const { state, toggleSelect, performRename } = await freshStore();
     state.files = [...FILES];
-    state.path = "/tmp/somewhere";
     state.currentPath = "/tmp/somewhere";
     toggleSelect("a.txt");
     api.rename.mockResolvedValue({ renamed: 1, errors: [] });
@@ -196,6 +205,66 @@ describe("api-backed flows (mocked api)", () => {
     await performRename();
     expect(api.rename).toHaveBeenCalledTimes(1);
     expect(state.renaming).toBe(false);
+  });
+});
+
+describe("navigation", () => {
+  it("openHome loads the home directory", async () => {
+    const { state, openHome } = await freshStore();
+    api.homeDir.mockResolvedValue({ path: "/home" });
+    api.listFiles.mockResolvedValue({ files: [] });
+    await openHome();
+    expect(api.homeDir).toHaveBeenCalledTimes(1);
+    expect(state.currentPath).toBe("/home");
+  });
+
+  it("openHome records the error on failure", async () => {
+    const { state, openHome } = await freshStore();
+    api.homeDir.mockRejectedValue(new Error("boom"));
+    await openHome();
+    expect(state.error).toContain("boom");
+  });
+
+  it("goUp moves to the parent directory", async () => {
+    const { state, goUp } = await freshStore();
+    api.listFiles.mockResolvedValue({ files: [] });
+    state.currentPath = "/tmp/somewhere";
+    goUp();
+    await new Promise((r) => setTimeout(r, 0)); // settle the fire-and-forget loadDir
+    expect(api.listFiles).toHaveBeenCalledWith("/tmp");
+    expect(state.currentPath).toBe("/tmp");
+  });
+
+  it("goUp tolerates trailing slashes", async () => {
+    const { state, goUp } = await freshStore();
+    api.listFiles.mockResolvedValue({ files: [] });
+    state.currentPath = "/tmp/somewhere/";
+    goUp();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(state.currentPath).toBe("/tmp");
+  });
+
+  it("goUp is a no-op at the filesystem root and on an empty path", async () => {
+    const { state, goUp } = await freshStore();
+    api.listFiles.mockResolvedValue({ files: [] });
+    state.currentPath = "/";
+    goUp();
+    expect(api.listFiles).not.toHaveBeenCalled();
+    state.currentPath = "";
+    goUp();
+    expect(api.listFiles).not.toHaveBeenCalled();
+  });
+});
+
+describe("preview guards", () => {
+  it("refreshPreview with no selection clears previews without calling the API", async () => {
+    const { state, refreshPreview } = await freshStore();
+    state.files = [...FILES];
+    state.currentPath = "/tmp";
+    state.previews = { "a.txt": {} };
+    await refreshPreview();
+    expect(api.preview).not.toHaveBeenCalled();
+    expect(state.previews).toEqual({});
   });
 });
 
@@ -257,7 +326,6 @@ describe("view toggles (files / directories)", () => {
     api.preview.mockResolvedValue({ previews: {} });
 
     await refreshPreview();
-    await new Promise((r) => setTimeout(r, 250));
     const payload = api.preview.mock.calls[0][0];
     expect(payload.files).toEqual(["a.txt", "Photos"]); // list order
     expect(payload.dirs).toEqual(["Photos"]); // only the directory names
